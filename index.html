@@ -2418,10 +2418,19 @@
     function _addP(un, id) { modalUnidade = un; addPrazoId = id; editId = null; const c = DADOS[un].find(x => x.id === id); document.getElementById("mtitulo").textContent = `➕ Novo Prazo — Cond. ${c.num}`; document.getElementById("fNum").value = c.num; document.getElementById("fNum").disabled = true; document.getElementById("fDesc").value = c.desc; document.getElementById("fDesc").disabled = true; document.getElementById("fData").value = ""; document.getElementById("fObs").value = ""; document.getElementById("fStatus").value = "pendente"; document.getElementById("movl").classList.add("open"); }
     function fecharModal() { document.getElementById("movl").classList.remove("open"); document.getElementById("fNum").disabled = false; document.getElementById("fDesc").disabled = false; modalUnidade = null; editId = null; addPrazoId = null; }
     function salvar(){
-      const num=document.getElementById("fNum").value.trim(), desc=document.getElementById("fDesc").value.trim(), data=document.getElementById("fData").value, obs=document.getElementById("fObs").value.trim(), status=document.getElementById("fStatus").value;
+      let num=document.getElementById("fNum").value.trim();
+      const desc=document.getElementById("fDesc").value.trim();
+      const data=document.getElementById("fData").value;
+      const obs=document.getElementById("fObs").value.trim();
+      const status=document.getElementById("fStatus").value;
       if(!data){alert("Informe a data do prazo.");return;}
       const un=modalUnidade;
       if(!num||!desc){alert("Preencha número e descrição.");return;}
+      
+      // Fix: Previne que o Google Sheets converta "8.1" para uma Data ao adicionar um prefixo invisível de texto (')
+      if (!num.startsWith("'")) {
+        num = "'" + num;
+      }
       
       fecharModal();
       let loader=document.getElementById("loader-overlay");
@@ -2712,9 +2721,13 @@
       const nome=document.getElementById("lNome").value.trim();
       const emissao=document.getElementById("lEmissao").value;
       const validade=document.getElementById("lValidade").value;
-      const codigo=document.getElementById("lCodigo").value.trim();
+      let codigo=document.getElementById("lCodigo").value.trim();
       const orgao=document.getElementById("lOrgao").value.trim();
       if(!nome){alert("Informe o tipo de licença / autorização.");return;}
+      
+      if (codigo && !codigo.startsWith("'")) {
+        codigo = "'" + codigo;
+      }
       const un=_licUnidade;
     
       fecharModalLic();
@@ -2798,7 +2811,15 @@
         condRows.forEach(row => {
           const un = String(row[0]).toLowerCase().trim();
           if (!DADOS[un]) return;
-          const num = String(row[1] || "");
+          let num = String(row[1] || "");
+          
+          // Auto-recover mistake: if Google Sheets converted the note to a Date (e.g. "8.1" became "January 8th -> 2026-01-08T...")
+          if (/^\d{4}-\d{2}-\d{2}T/.test(num)) {
+            const parts = num.split('T')[0].split('-');
+            const month = parseInt(parts[1], 10);
+            const day = parseInt(parts[2], 10);
+            num = day + "." + month;
+          }
           const desc = String(row[2] || "");
 
           let dtRaw = row[3];
@@ -2838,7 +2859,14 @@
           if (emissao.includes("/")) { const p = emissao.split("/"); if (p.length === 3) emissao = `${p[2]}-${p[1]}-${p[0]}`; }
           if (validade.includes("/")) { const p = validade.split("/"); if (p.length === 3) validade = `${p[2]}-${p[1]}-${p[0]}`; }
 
-          const codigo = String(row[4] || "");
+          let codigo = String(row[4] || "");
+          // Auto-recover for license codes as well
+          if (/^\d{4}-\d{2}-\d{2}T/.test(codigo)) {
+            const parts = codigo.split('T')[0].split('-');
+            const month = parseInt(parts[1], 10);
+            const day = parseInt(parts[2], 10);
+            codigo = day + "." + month;
+          }
           const orgao = String(row[5] || "");
 
           const nid = LICENCAS[un].length > 0 ? Math.max(...LICENCAS[un].map(x => x.id)) + 1 : 1;
