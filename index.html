@@ -1341,6 +1341,8 @@
           id="ui-bj-emissao">24/02/2026</span></div>
       <div class="unit-info-item"><span class="ui-lbl">Validade</span><span class="ui-val"
           id="ui-bj-validade">24/02/2027</span></div>
+      <div class="unit-info-item"><span class="ui-lbl">Status</span><span class="ui-val"
+          id="ui-bj-status">—</span></div>
       <button class="ui-edit-btn" onclick="editarInfo('bj')" title="Editar informações da unidade">✏️ Editar</button>
     </div>
     <div class="inner-view active" id="bj-dash">
@@ -1519,6 +1521,8 @@
           id="ui-pe-emissao">24/04/2025</span></div>
       <div class="unit-info-item"><span class="ui-lbl">Validade</span><span class="ui-val"
           id="ui-pe-validade">24/04/2026</span></div>
+      <div class="unit-info-item"><span class="ui-lbl">Status</span><span class="ui-val"
+          id="ui-pe-status">—</span></div>
       <button class="ui-edit-btn" onclick="editarInfo('pe')" title="Editar informações da unidade">✏️ Editar</button>
     </div>
     <div class="inner-view active" id="pe-dash">
@@ -1697,6 +1701,8 @@
           id="ui-it-emissao">25/11/2025</span></div>
       <div class="unit-info-item"><span class="ui-lbl">Validade</span><span class="ui-val"
           id="ui-it-validade">25/11/2026</span></div>
+      <div class="unit-info-item"><span class="ui-lbl">Status</span><span class="ui-val"
+          id="ui-it-status">—</span></div>
       <button class="ui-edit-btn" onclick="editarInfo('it')" title="Editar informações da unidade">✏️ Editar</button>
     </div>
     <div class="inner-view active" id="it-dash">
@@ -1875,6 +1881,8 @@
           id="ui-ga-emissao">28/04/2025</span></div>
       <div class="unit-info-item"><span class="ui-lbl">Validade</span><span class="ui-val"
           id="ui-ga-validade">28/04/2026</span></div>
+      <div class="unit-info-item"><span class="ui-lbl">Status</span><span class="ui-val"
+          id="ui-ga-status">—</span></div>
       <button class="ui-edit-btn" onclick="editarInfo('ga')" title="Editar informações da unidade">✏️ Editar</button>
     </div>
     <div class="inner-view active" id="ga-dash">
@@ -2048,7 +2056,10 @@
         <label>Status</label>
         <select id="fStatus">
           <option value="pendente">Pendente</option>
-          <option value="cumprido">Cumprido ✅</option>
+          <option value="proxima do vencimento">⚠️ Próxima do vencimento</option>
+          <option value="vencido">🚨 Vencido</option>
+          <option value="ausente">— Ausente</option>
+          <option value="concluida">✅ Concluída</option>
         </select>
       </div>
       <div class="mbtns">
@@ -2096,9 +2107,17 @@
             ausente)</span></label><input type="date" id="lValidade">
         <label>Código do Documento</label><input type="text" id="lCodigo" placeholder="Ex: 03.26.02.001294-7">
         <label>Órgão Emissor</label><input type="text" id="lOrgao" placeholder="Ex: CPRH">
+        <label>Status</label>
+        <select id="lStatusManual">
+          <option value="">🔄 Automático (pela data de validade)</option>
+          <option value="proxima do vencimento">⚠️ Próxima do vencimento</option>
+          <option value="vencido">🚨 Vencido</option>
+          <option value="ausente">— Ausente</option>
+          <option value="concluida">✅ Concluída</option>
+        </select>
         <div
           style="margin-top:12px;padding:10px 12px;background:#f0f7f3;border-radius:9px;border:1px solid #a3d9b3;font-size:11px;color:#155724;font-family:'Inter',sans-serif;">
-          💡 O status é calculado <strong>automaticamente</strong> pela data de validade:<br>
+          💡 Se "Automático" estiver selecionado, o status é calculado pela data de validade:<br>
           sem data = Ausente · vencida = Vencido · ≤ 90 dias = Prox. Venc. · restante = Válido
         </div>
       </div>
@@ -2118,6 +2137,14 @@
         <label>Licença de Operação</label><input type="text" id="iLic" placeholder="Ex: Nº 03.26.02.001294-7">
         <label>Emissão</label><input type="text" id="iEmissao" placeholder="Ex: 24/02/2026">
         <label>Validade</label><input type="text" id="iValidade" placeholder="Ex: 24/02/2027">
+        <label>Status</label>
+        <select id="iStatus">
+          <option value="—">— Selecione</option>
+          <option value="proxima do vencimento">⚠️ Próxima do vencimento</option>
+          <option value="vencido">🚨 Vencido</option>
+          <option value="ausente">— Ausente</option>
+          <option value="concluida">✅ Concluída</option>
+        </select>
       </div>
       <div class="mbtns">
         <button class="bcn" onclick="fecharModalInfo()">Cancelar</button>
@@ -2370,12 +2397,29 @@
         };
 
         // Normalização dos dados recebidos
+        const finalDados = {};
         Object.keys(parsed.dados).forEach(u => {
-          parsed.dados[u].forEach(c => {
-            c.num = cleanDate(c.num);
-            c.prazos.forEach(p => p.data = cleanDate(p.data));
+          const raw = parsed.dados[u];
+          const grouped = [];
+          const map = {};
+          raw.forEach(c => {
+            const n = fixNum(cleanDate(c.num));
+            if (!map[n]) {
+              map[n] = { id: c.id, num: n, desc: c.desc, prazos: [] };
+              grouped.push(map[n]);
+            }
+            if (c.prazos) {
+              c.prazos.forEach(p => {
+                p.data = cleanDate(p.data);
+                map[n].prazos.push(p);
+              });
+            }
           });
+          // Ordenar prazos por data
+          grouped.forEach(g => g.prazos.sort((a, b) => (a.data || "").localeCompare(b.data || "")));
+          finalDados[u] = grouped;
         });
+
         Object.keys(parsed.licencas).forEach(u => {
           parsed.licencas[u].forEach(l => {
             l.emissao = cleanDate(l.emissao);
@@ -2388,7 +2432,7 @@
           i.validade = cleanDate(i.validade);
         });
 
-        DADOS = parsed.dados;
+        DADOS = finalDados;
         LICENCAS = parsed.licencas;
         INFO_UNIDADES = parsed.info;
         
@@ -2409,6 +2453,7 @@
       const elLic = document.getElementById(`ui-${u}-lic`);
       const elEmiss = document.getElementById(`ui-${u}-emissao`);
       const elVal = document.getElementById(`ui-${u}-validade`);
+      const elStatus = document.getElementById(`ui-${u}-status`);
 
       const fmtD = (s) => {
         if (!s || s === "—") return "—";
@@ -2420,6 +2465,7 @@
       if (elLic) elLic.textContent = info.lic || "—";
       if (elEmiss) elEmiss.textContent = fmtD(info.emissao);
       if (elVal) elVal.textContent = fmtD(info.validade);
+      if (elStatus) elStatus.textContent = info.status || "—";
     }
 
     // ===== ESTADO =====
@@ -2430,8 +2476,25 @@
     // ===== UTILS =====
     function hoje() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
     function parseD(s) { const p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+    
+    function fixNum(numStr) {
+      if (!numStr || typeof numStr !== 'string') return numStr;
+      // Se a string tem o formato YYYY-MM-DD (ex: 2026-01-09), Sheets corrompeu um número tipo "9.1"
+      const m = numStr.match(/^20\d{2}-(\d{1,2})-(\d{1,2})/);
+      if (m) {
+        const mm = parseInt(m[1], 10);
+        const dd = parseInt(m[2], 10);
+        // Se o dia é 9 ou outro valor fixo comum em corrupção, e o mês é < 13, é quase certeza
+        return `${dd}.${mm}`;
+      }
+      return numStr;
+    }
+
     function getSt(p) {
-      if (p.status === "cumprido") return "cumprido";
+      if (p.status === "cumprido" || p.status === "concluida") return "cumprido";
+      if (p.status === "proxima do vencimento") return "aviso";
+      if (p.status === "vencido") return "atraso";
+      if (p.status === "ausente") return "ausente";
       const diff = Math.floor((parseD(p.data) - hoje()) / 86400000);
       if (diff < 0) return "atraso"; if (diff <= 30) return "aviso"; return "ok";
     }
@@ -2557,7 +2620,7 @@
         const badgeCls = p.st === "atraso" ? "bsm atraso" : p.st === "aviso" ? "bsm aviso" : "bsm ok";
         const badgeTxt = p.st === "atraso" ? "🚨 Atrasado" : p.st === "aviso" ? "⚠️ Atenção" : "✅ Em Dia";
         return `<tr>
-      <td><span style="${numStyle}">${p.num}</span></td>
+      <td><span style="${numStyle}">${fixNum(p.num)}</span></td>
       <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:#6b6460">${p.desc}</td>
       <td style="font-family:Lexend,sans-serif;font-weight:600;font-size:12px;color:#3a3430">${fmtD(p.data)}</td>
       <td style="font-family:Lexend,sans-serif;font-weight:700;color:${diasColor};font-size:12px">${dtxt}</td>
@@ -2613,7 +2676,7 @@
         const cor = pct === 100 ? "#27ae60" : pct > 50 ? "#e67e22" : "#c0392b";
         return `<div>
       <div class="ph">
-        <span class="pn">Cond. ${c.num}</span>
+        <span class="pn">Cond. ${fixNum(c.num)}</span>
         <span class="pp">${cum}/${tot} (${pct}%)</span>
       </div>
       <div class="pb"><div class="pf" style="width:${pct}%;background:${cor}"></div></div>
@@ -2645,6 +2708,7 @@
           if (s === "cumprido") { badge = `<span class="pbadge bcu">✓ Cumprido</span>`; }
           else if (s === "atraso") { badge = `<span class="pbadge bat">🚨 Atrasado</span>`; dtxt = `<div class="pdias">${Math.abs(d)}d em atraso</div>`; }
           else if (s === "aviso") { badge = `<span class="pbadge bav">⚠️ Atenção</span>`; dtxt = `<div class="pdias">${d} dias restantes</div>`; }
+          else if (s === "ausente") { badge = `<span class="pbadge bcu">— Ausente</span>`; dtxt = `<div class="pdias">—</div>`; }
           else { badge = `<span class="pbadge bok">✅ Em dia</span>`; dtxt = `<div class="pdias">${d} dias restantes</div>`; }
           const obs = p.obs ? `<div class="pobs ${s === "cumprido" ? "cr" : ""}">${s === "cumprido" ? "📄 " : ""}${p.obs}</div>` : "";
           ph += `<div class="prow status-${s}"><div><div class="pdata">${fmtD(p.data)}</div>${obs}</div><div style="text-align:right">${badge}${dtxt}</div></div>`;
@@ -2969,6 +3033,14 @@
     // Calcula status automaticamente pela data de validade
     // ausente = sem data; vencido = passou; prox = ≤ 90 dias; valido = resto
     function getStLic(l) {
+      // Se status manual definido, usar ele
+      if (l.status_manual && l.status_manual !== "") {
+        if (l.status_manual === "proxima do vencimento" || l.status_manual === "prox") return "prox";
+        if (l.status_manual === "vencido") return "vencido";
+        if (l.status_manual === "ausente") return "ausente";
+        if (l.status_manual === "concluida" || l.status_manual === "cumprido") return "cumprido";
+        return l.status_manual;
+      }
       if (!l.validade) return "ausente";
       const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
       const val = new Date(l.validade); val.setHours(0, 0, 0, 0);
@@ -3026,6 +3098,7 @@
         document.getElementById("lValidade").value = "";
         document.getElementById("lCodigo").value = "";
         document.getElementById("lOrgao").value = "";
+        document.getElementById("lStatusManual").value = "";
         document.getElementById("movl-lic").classList.add("open");
       });
     }
@@ -3040,6 +3113,7 @@
         document.getElementById("lValidade").value = l.validade || "";
         document.getElementById("lCodigo").value = l.codigo || "";
         document.getElementById("lOrgao").value = l.orgao || "";
+        document.getElementById("lStatusManual").value = l.status_manual || "";
         document.getElementById("movl-lic").classList.add("open");
       });
     }
@@ -3086,6 +3160,8 @@
         document.getElementById("iLic").value = document.getElementById("ui-" + un + "-lic").textContent;
         document.getElementById("iEmissao").value = document.getElementById("ui-" + un + "-emissao").textContent;
         document.getElementById("iValidade").value = document.getElementById("ui-" + un + "-validade").textContent;
+        const statusEl = document.getElementById("ui-" + un + "-status");
+        document.getElementById("iStatus").value = statusEl ? statusEl.textContent : "—";
         document.getElementById("movl-info").classList.add("open");
       });
     }
@@ -3102,7 +3178,8 @@
         cnpj: document.getElementById("iCnpj").value.trim(),
         lic: document.getElementById("iLic").value.trim(),
         emissao: document.getElementById("iEmissao").value.trim(),
-        validade: document.getElementById("iValidade").value.trim()
+        validade: document.getElementById("iValidade").value.trim(),
+        status: document.getElementById("iStatus").value
       };
       INFO_UNIDADES[un] = info;
       saveData('SAVE_INFO', un, info);
