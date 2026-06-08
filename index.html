@@ -1060,6 +1060,58 @@ body {
 
   border: 1px solid transparent;
 
+  position: relative;
+
+  transition: background var(--t), border-color var(--t);
+
+}
+
+.edit-p-btn {
+
+  position: absolute;
+
+  right: 8px;
+
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  background: none;
+
+  border: none;
+
+  cursor: pointer;
+
+  font-size: 11px;
+
+  opacity: 0;
+
+  transition: opacity var(--t), transform var(--t);
+
+}
+
+.prow:hover .edit-p-btn {
+
+  opacity: 0.7;
+
+}
+
+.prow:hover .edit-p-btn:hover {
+
+  opacity: 1;
+
+  transform: translateY(-50%) scale(1.2);
+
+}
+
+@media (max-width: 768px) {
+
+  .edit-p-btn {
+
+    opacity: 0.6;
+
+  }
+
 }
 
 .prow.status-ok {
@@ -2346,11 +2398,13 @@ body {
 
       <label>Status</label>
 
-      <select id="fStatus"><option value="pendente">Pendente</option><option value="cumprido">Cumprido ✅</option></select>
+      <select id="fStatus"><option value="pendente">Pendente</option><option value="cumprido">Cumprido ✅</option><option value="aviso">Próximo de vencer ⚠️</option><option value="ok">Em dia ✅</option></select>
 
     </div>
 
     <div class="mbtns">
+
+      <button class="bdel" id="btnExcluirPrazo" onclick="excluirPrazo()" style="background:#e74c3c; color:#fff; border:none; padding:9px 22px; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; font-family:var(--font-display); letter-spacing:0.4px; display:none; transition:background var(--t); box-shadow:0 2px 8px rgba(231,76,60,0.3); margin-right:auto;">Excluir Prazo</button>
 
       <button class="bcn" onclick="fecharModal()">Cancelar</button>
 
@@ -2409,6 +2463,20 @@ body {
       <label>Código do Documento</label><input type="text" id="lCodigo" placeholder="Ex: 03.26.02.001294-7">
 
       <label>Órgão Emissor</label><input type="text" id="lOrgao" placeholder="Ex: CPRH">
+
+      <label>Status <span style="color:#a09990;font-weight:400;font-size:10px;">(opcional - sobrescreve cálculo automático)</span></label>
+
+      <select id="lStatus">
+
+        <option value="">Automático 🔄</option>
+
+        <option value="cumprido">Cumprido ✅</option>
+
+        <option value="prox">Próximo de vencer ⚠️</option>
+
+        <option value="vencido">Vencido 🚨</option>
+
+      </select>
 
       <div style="margin-top:12px;padding:10px 12px;background:#f0f7f3;border-radius:9px;border:1px solid #a3d9b3;font-size:11px;color:#155724;font-family:'Inter',sans-serif;">
 
@@ -2519,6 +2587,50 @@ Chart.register(ChartDataLabels);
   const orig = document.createElement('div');
 
   orig.innerHTML = '';
+
+})();
+
+// ===== SET FAVICON FROM NATTO LOGO =====
+
+(function() {
+
+  const logo = document.getElementById('logo-natto-img');
+
+  if (logo && logo.src) {
+
+    const link = document.createElement('link');
+
+    link.rel = 'icon';
+
+    link.type = 'image/png';
+
+    link.href = logo.src;
+
+    document.head.appendChild(link);
+
+  } else {
+
+    window.addEventListener('DOMContentLoaded', () => {
+
+      const logoDeferred = document.getElementById('logo-natto-img');
+
+      if (logoDeferred && logoDeferred.src) {
+
+        const link = document.createElement('link');
+
+        link.rel = 'icon';
+
+        link.type = 'image/png';
+
+        link.href = logoDeferred.src;
+
+        document.head.appendChild(link);
+
+      }
+
+    });
+
+  }
 
 })();
 
@@ -2790,7 +2902,7 @@ const filtros = {bj:"todos",pe:"todos",it:"todos",ga:"todos"};
 
 const charts = {};
 
-let modalUnidade = null, editId = null, addPrazoId = null;
+let modalUnidade = null, editId = null, addPrazoId = null, editPrazoIndex = null;
 
 // ===== UTILS =====
 
@@ -3194,6 +3306,8 @@ function getSt(p){
 
   if(p.status==="cumprido") return "cumprido";
 
+  if(p.status==="aviso" || p.status==="ok" || p.status==="atraso") return p.status;
+
   const diff=Math.floor((parseD(p.data)-hoje())/86400000);
 
   if(diff<0) return "atraso"; if(diff<=30) return "aviso"; return "ok";
@@ -3594,7 +3708,7 @@ function renderGrid(un){
 
     let ph="";
 
-    c.prazos.forEach(p=>{
+    c.prazos.forEach((p, pIdx)=>{
 
       const s=getSt(p), d=diasR(p.data);
 
@@ -3610,7 +3724,7 @@ function renderGrid(un){
 
       const obs=p.obs?`<div class="pobs ${s==="cumprido"?"cr":""}">${s==="cumprido"?"📄 ":""}${p.obs}</div>`:"";
 
-      ph+=`<div class="prow status-${s}"><div><div class="pdata">${fmtD(p.data)}</div>${obs}</div><div style="text-align:right">${badge}${dtxt}</div></div>`;
+      ph+=`<div class="prow status-${s}"><div><div class="pdata">${fmtD(p.data)}</div>${obs}</div><div style="text-align:right; padding-right:20px;">${badge}${dtxt}</div><button class="edit-p-btn" onclick="editPrazo('${un}',${c.id},${pIdx})" title="Editar este prazo">✏️</button></div>`;
 
     });
 
@@ -3716,15 +3830,21 @@ function abrirModal(un){ pedirSenha(function(){ _abrirModal(un); }); }
 
 function editC(un,id){ pedirSenha(function(){ _editC(un,id); }); }
 
+function editPrazo(un,id,prazoIndex){ pedirSenha(function(){ _editPrazo(un,id,prazoIndex); }); }
+
 function addP(un,id){ pedirSenha(function(){ _addP(un,id); }); }
 
-function _abrirModal(un){ modalUnidade=un; editId=null; addPrazoId=null; document.getElementById("mtitulo").textContent="➕ Nova Condicionante"; document.getElementById("fNum").value=""; document.getElementById("fDesc").value=""; document.getElementById("fData").value=""; document.getElementById("fObs").value=""; document.getElementById("fStatus").value="pendente"; document.getElementById("fNum").disabled=false; document.getElementById("fDesc").disabled=false; document.getElementById("movl").classList.add("open"); }
+function _abrirModal(un){ modalUnidade=un; editId=null; addPrazoId=null; editPrazoIndex=null; document.getElementById("mtitulo").textContent="➕ Nova Condicionante"; document.getElementById("fNum").value=""; document.getElementById("fDesc").value=""; document.getElementById("fData").value=""; document.getElementById("fObs").value=""; document.getElementById("fStatus").value="pendente"; document.getElementById("fNum").disabled=false; document.getElementById("fDesc").disabled=false; document.getElementById("btnExcluirPrazo").style.display="none"; document.getElementById("movl").classList.add("open"); }
 
-function _editC(un,id){ modalUnidade=un; editId=id; addPrazoId=null; const c=DADOS[un].find(x=>x.id===id); document.getElementById("mtitulo").textContent="✏️ Editar Condicionante"; document.getElementById("fNum").value=c.num; document.getElementById("fDesc").value=c.desc; document.getElementById("fNum").disabled=false; document.getElementById("fDesc").disabled=false; const lp=c.prazos[c.prazos.length-1]; if(lp){document.getElementById("fData").value=lp.data;document.getElementById("fObs").value=lp.obs||"";document.getElementById("fStatus").value=lp.status||"pendente";} document.getElementById("movl").classList.add("open"); }
+function _editC(un,id){ modalUnidade=un; editId=id; addPrazoId=null; editPrazoIndex=null; const c=DADOS[un].find(x=>x.id===id); document.getElementById("mtitulo").textContent="✏️ Editar Condicionante"; document.getElementById("fNum").value=c.num; document.getElementById("fDesc").value=c.desc; document.getElementById("fNum").disabled=false; document.getElementById("fDesc").disabled=false; document.getElementById("btnExcluirPrazo").style.display="none"; const lp=c.prazos[c.prazos.length-1]; if(lp){document.getElementById("fData").value=lp.data;document.getElementById("fObs").value=lp.obs||"";document.getElementById("fStatus").value=lp.status||"pendente";} document.getElementById("movl").classList.add("open"); }
 
-function _addP(un,id){ modalUnidade=un; addPrazoId=id; editId=null; const c=DADOS[un].find(x=>x.id===id); document.getElementById("mtitulo").textContent=`➕ Novo Prazo — Cond. ${c.num}`; document.getElementById("fNum").value=c.num; document.getElementById("fNum").disabled=true; document.getElementById("fDesc").value=c.desc; document.getElementById("fDesc").disabled=true; document.getElementById("fData").value=""; document.getElementById("fObs").value=""; document.getElementById("fStatus").value="pendente"; document.getElementById("movl").classList.add("open"); }
+function _editPrazo(un,id,prazoIndex){ modalUnidade=un; editId=id; editPrazoIndex=prazoIndex; addPrazoId=null; const c=DADOS[un].find(x=>x.id===id); document.getElementById("mtitulo").textContent=`✏️ Editar Prazo — Cond. ${c.num}`; document.getElementById("fNum").value=c.num; document.getElementById("fDesc").value=c.desc; document.getElementById("fNum").disabled=true; document.getElementById("fDesc").disabled=true; document.getElementById("btnExcluirPrazo").style.display="inline-block"; const p=c.prazos[prazoIndex]; if(p){document.getElementById("fData").value=p.data;document.getElementById("fObs").value=p.obs||"";document.getElementById("fStatus").value=p.status||"pendente";} document.getElementById("movl").classList.add("open"); }
 
-function fecharModal(){ document.getElementById("movl").classList.remove("open"); document.getElementById("fNum").disabled=false; document.getElementById("fDesc").disabled=false; modalUnidade=null; editId=null; addPrazoId=null; }
+function _addP(un,id){ modalUnidade=un; addPrazoId=id; editId=null; editPrazoIndex=null; const c=DADOS[un].find(x=>x.id===id); document.getElementById("mtitulo").textContent=`➕ Novo Prazo — Cond. ${c.num}`; document.getElementById("fNum").value=c.num; document.getElementById("fNum").disabled=true; document.getElementById("fDesc").value=c.desc; document.getElementById("fDesc").disabled=true; document.getElementById("fData").value=""; document.getElementById("fObs").value=""; document.getElementById("fStatus").value="pendente"; document.getElementById("btnExcluirPrazo").style.display="none"; document.getElementById("movl").classList.add("open"); }
+
+function fecharModal(){ document.getElementById("movl").classList.remove("open"); document.getElementById("fNum").disabled=false; document.getElementById("fDesc").disabled=false; document.getElementById("btnExcluirPrazo").style.display="none"; modalUnidade=null; editId=null; addPrazoId=null; editPrazoIndex=null; }
+
+function excluirPrazo(){ if(!confirm("Tem certeza de que deseja excluir este prazo?"))return; const un=modalUnidade; if(editId && editPrazoIndex!==null){ const c=DADOS[un].find(x=>x.id===editId); if(c.prazos.length===1){alert("A condicionante deve ter pelo menos um prazo.");return;} c.prazos.splice(editPrazoIndex,1); fecharModal(); renderGrid(un); renderDash(un); syncWithGoogleSheets("syncCondicionantes"); } }
 
 function salvar(){
 
@@ -3736,7 +3856,7 @@ function salvar(){
 
   if(addPrazoId){ DADOS[un].find(x=>x.id===addPrazoId).prazos.push({data,obs,status}); }
 
-  else if(editId){ const c=DADOS[un].find(x=>x.id===editId); if(num)c.num=num; if(desc)c.desc=desc; if(c.prazos.length>0)c.prazos[c.prazos.length-1]={data,obs,status}; else c.prazos.push({data,obs,status}); }
+  else if(editId){ const c=DADOS[un].find(x=>x.id===editId); if(num && editPrazoIndex===null)c.num=num; if(desc && editPrazoIndex===null)c.desc=desc; if(editPrazoIndex!==null){c.prazos[editPrazoIndex]={data,obs,status};}else{if(c.prazos.length>0)c.prazos[c.prazos.length-1]={data,obs,status}; else c.prazos.push({data,obs,status});} }
 
   else{ if(!num||!desc){alert("Preencha número e descrição.");return;} const nid=DADOS[un].length>0?Math.max(...DADOS[un].map(x=>x.id))+1:1; DADOS[un].push({id:nid,num,desc,prazos:[{data,obs,status}]}); }
 
@@ -3756,7 +3876,7 @@ function renderLicDash(un){
 
   const total    = lics.length;
 
-  const validas  = lics.filter(l=>getStLic(l)==="valido").length;
+  const validas  = lics.filter(l=>{ const s=getStLic(l); return s==="valido"||s==="cumprido"; }).length;
 
   const proximas = lics.filter(l=>getStLic(l)==="prox").length;
 
@@ -4182,6 +4302,8 @@ function fmtDL(iso){
 
 function getStLic(l){
 
+  if(l.status) return l.status;
+
   if(!l.validade) return "ausente";
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -4222,13 +4344,15 @@ function renderLic(un){
 
     const stMap={
 
-      valido: ["lbadge valido",  "✅ Válido"],
+      valido:  ["lbadge valido",  "✅ Válido"],
 
-      prox:   ["lbadge prox",   "⚠️ Prox. Venc."],
+      cumprido: ["lbadge valido",  "✅ Cumprido"],
 
-      vencido:["lbadge vencido","🚨 Vencido"],
+      prox:    ["lbadge prox",    "⚠️ Prox. Venc."],
 
-      ausente:["lbadge ausente","— Ausente"]
+      vencido: ["lbadge vencido", "🚨 Vencido"],
+
+      ausente: ["lbadge ausente", "— Ausente"]
 
     };
 
@@ -4236,7 +4360,7 @@ function renderLic(un){
 
     let diasTxt="";
 
-    if(dias!==null){
+    if(dias!==null && st!=="cumprido"){
 
       if(dias<0) diasTxt=`<div style="font-size:10px;color:#7b1d1d;font-family:'Lexend',sans-serif;font-weight:700;margin-top:2px;">${Math.abs(dias)}d vencido</div>`;
 
@@ -4288,6 +4412,8 @@ function abrirModalLic(un){
 
     document.getElementById("lOrgao").value="";
 
+    document.getElementById("lStatus").value="";
+
     document.getElementById("movl-lic").classList.add("open");
 
   });
@@ -4313,6 +4439,8 @@ function editLic(un,id){
     document.getElementById("lCodigo").value=l.codigo||"";
 
     document.getElementById("lOrgao").value=l.orgao||"";
+
+    document.getElementById("lStatus").value=l.status||"";
 
     document.getElementById("movl-lic").classList.add("open");
 
@@ -4340,6 +4468,8 @@ function salvarLic(){
 
   const orgao=document.getElementById("lOrgao").value.trim();
 
+  const status=document.getElementById("lStatus").value;
+
   if(!nome){alert("Informe o tipo de licença / autorização.");return;}
 
   const un=_licUnidade;
@@ -4348,13 +4478,13 @@ function salvarLic(){
 
     const l=LICENCAS[un].find(x=>x.id===_licEditId);
 
-    l.nome=nome; l.emissao=emissao; l.validade=validade; l.codigo=codigo; l.orgao=orgao;
+    l.nome=nome; l.emissao=emissao; l.validade=validade; l.codigo=codigo; l.orgao=orgao; l.status=status;
 
   } else {
 
     const nid=LICENCAS[un].length>0?Math.max(...LICENCAS[un].map(x=>x.id))+1:1;
 
-    LICENCAS[un].push({id:nid,nome,emissao,validade,codigo,orgao});
+    LICENCAS[un].push({id:nid,nome,emissao,validade,codigo,orgao,status});
 
   }
 
