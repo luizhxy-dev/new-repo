@@ -54,11 +54,11 @@
 
   /* Status — pastel com texto escuro */
 
-  --status-ok-bg:   #d4edda;
+  --status-ok-bg:   #ede7f6;
 
-  --status-ok-text: #155724;
+  --status-ok-text: #3b3d9c;
 
-  --status-ok-border: #a3d9b3;
+  --status-ok-border: #b39ddb;
 
   --status-warn-bg:   #fff3cd;
 
@@ -72,11 +72,11 @@
 
   --status-late-border: #f5b8b8;
 
-  --status-done-bg:   #e9ecef;
+  --status-done-bg:   #d4edda;
 
-  --status-done-text: #5a6672;
+  --status-done-text: #155724;
 
-  --status-done-border: #ced4da;
+  --status-done-border: #a3d9b3;
 
   /* Sombras suaves */
 
@@ -518,13 +518,13 @@ body {
 
   display: grid;
 
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
 
   gap: 16px;
 
   padding: 20px 28px 8px;
 
-  max-width: 1200px;
+  max-width: 1400px;
 
   margin: 0 auto;
 
@@ -564,11 +564,13 @@ body {
 
 .kpi.t  { border-left-color: var(--forest-500); }
 
-.kpi.ok { border-left-color: #27ae60; }
+.kpi.ok { border-left-color: #5b5ea6; }
 
 .kpi.av { border-left-color: #e67e22; }
 
 .kpi.at { border-left-color: #c0392b; }
+
+.kpi.cm { border-left-color: #27ae60; }
 
 .kpi-ic {
 
@@ -592,11 +594,13 @@ body {
 
 .kpi.t  .kpi-ic { background: #e8f5ee; }
 
-.kpi.ok .kpi-ic { background: #d4edda; }
+.kpi.ok .kpi-ic { background: #ede7f6; }
 
 .kpi.av .kpi-ic { background: #fff3cd; }
 
 .kpi.at .kpi-ic { background: #fce8e8; }
+
+.kpi.cm .kpi-ic { background: #d4edda; }
 
 .kpi-num {
 
@@ -612,11 +616,13 @@ body {
 
 .kpi.t  .kpi-num { color: var(--forest-800); }
 
-.kpi.ok .kpi-num { color: #1a5c2e; }
+.kpi.ok .kpi-num { color: #3b3d9c; }
 
 .kpi.av .kpi-num { color: #924e00; }
 
 .kpi.at .kpi-num { color: #7b1d1d; }
+
+.kpi.cm .kpi-num { color: #1a5c2e; }
 
 .kpi-lbl {
 
@@ -1116,7 +1122,7 @@ body {
 
 .prow.status-ok {
 
-  background: #f0fbf5;
+  background: #f3f0fb;
 
   border-color: var(--status-ok-border);
 
@@ -1140,9 +1146,9 @@ body {
 
 .prow.status-cumprido {
 
-  background: var(--gray-50);
+  background: #f0fbf5;
 
-  border-color: var(--gray-150);
+  border-color: #a3d9b3;
 
 }
 
@@ -1162,11 +1168,11 @@ body {
 
 .prow.status-atraso   .pdata { color: var(--status-late-text); }
 
-.prow.status-cumprido .pdata { color: var(--gray-400); }
+.prow.status-cumprido .pdata { color: #155724; }
 
 .pobs { font-size: 10px; color: var(--gray-400); margin-top: 2px; font-family: var(--font-body); }
 
-.pobs.cr { color: var(--status-ok-text); font-weight: 600; }
+.pobs.cr { color: #155724; font-weight: 600; }
 
 /* Badges dentro dos cards */
 
@@ -1210,7 +1216,7 @@ body {
 
 .prow.status-atraso   .pdias { color: var(--status-late-text); }
 
-.prow.status-cumprido .pdias { color: var(--gray-400); }
+.prow.status-cumprido .pdias { color: #155724; }
 
 .empty {
 
@@ -1666,13 +1672,17 @@ body {
 
 }
 
-.lbadge.valido   { background: var(--status-ok-bg);   color: var(--status-ok-text);   border-color: var(--status-ok-border); }
+.lbadge.valido   { background: #d4edda;  color: #155724;  border-color: #a3d9b3; }
 
 .lbadge.vencido  { background: var(--status-late-bg);  color: var(--status-late-text); border-color: var(--status-late-border); }
 
 .lbadge.prox     { background: var(--status-warn-bg);  color: var(--status-warn-text); border-color: var(--status-warn-border); }
 
-.lbadge.ausente  { background: var(--status-done-bg);  color: var(--status-done-text); border-color: var(--status-done-border); }
+.lbadge.ausente  { background: #e9ecef;  color: #5a6672;  border-color: #ced4da; }
+
+/* bsm.cumprido = usado como badge 'Ausente' em licenças => cinza */
+
+.bsm.cumprido { background: #e9ecef;  color: #5a6672;  border-color: #ced4da; }
 
 .lic-actions {
 
@@ -1758,9 +1768,9 @@ body {
 
 /* ===================== RESPONSIVE ===================== */
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
 
-  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .kpi-row { grid-template-columns: repeat(3, 1fr); }
 
   .charts-row { grid-template-columns: 1fr; }
 
@@ -1769,6 +1779,12 @@ body {
   .header-inner { padding: 10px 16px; }
 
   .kpi-row, .charts-row, .toolbar, .grid { padding-left: 16px; padding-right: 16px; }
+
+}
+
+@media (max-width: 600px) {
+
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
 
 }
 
@@ -1862,7 +1878,9 @@ body {
 
       <div class="kpi t"><div class="kpi-ic">📋</div><div><div class="kpi-num" id="bj-dt">0</div><div class="kpi-lbl">Total Prazos</div></div></div>
 
-      <div class="kpi ok"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="bj-dok">0</div><div class="kpi-lbl">Em Dia</div></div></div>
+      <div class="kpi cm"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="bj-dcm">0</div><div class="kpi-lbl">Cumpridos</div></div></div>
+
+      <div class="kpi ok"><div class="kpi-ic">⏳</div><div><div class="kpi-num" id="bj-dok">0</div><div class="kpi-lbl">Em Dia</div></div></div>
 
       <div class="kpi av"><div class="kpi-ic">⚠️</div><div><div class="kpi-num" id="bj-dav">0</div><div class="kpi-lbl">Atenção</div></div></div>
 
@@ -1898,7 +1916,7 @@ body {
 
       <button class="fbtn fav" onclick="setF('bj','aviso',this)">⚠️ Atenção</button>
 
-      <button class="fbtn fok" onclick="setF('bj','ok',this)">✅ Em Dia</button>
+      <button class="fbtn fok" onclick="setF('bj','ok',this)">⏳ Em Dia</button>
 
       <button class="badd" onclick="abrirModal('bj')">＋ Adicionar</button>
 
@@ -1914,7 +1932,7 @@ body {
 
       <div class="kpi t"><div class="kpi-ic">📄</div><div><div class="kpi-num" id="bj-lt">0</div><div class="kpi-lbl">Total Licenças</div></div></div>
 
-      <div class="kpi ok"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="bj-lv">0</div><div class="kpi-lbl">Válidas</div></div></div>
+      <div class="kpi cm"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="bj-lv">0</div><div class="kpi-lbl">Válidas</div></div></div>
 
       <div class="kpi av"><div class="kpi-ic">⚠️</div><div><div class="kpi-num" id="bj-lp">0</div><div class="kpi-lbl">Prox. Vencimento</div></div></div>
 
@@ -2000,7 +2018,9 @@ body {
 
       <div class="kpi t"><div class="kpi-ic">📋</div><div><div class="kpi-num" id="pe-dt">0</div><div class="kpi-lbl">Total Prazos</div></div></div>
 
-      <div class="kpi ok"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="pe-dok">0</div><div class="kpi-lbl">Em Dia</div></div></div>
+      <div class="kpi cm"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="pe-dcm">0</div><div class="kpi-lbl">Cumpridos</div></div></div>
+
+      <div class="kpi ok"><div class="kpi-ic">⏳</div><div><div class="kpi-num" id="pe-dok">0</div><div class="kpi-lbl">Em Dia</div></div></div>
 
       <div class="kpi av"><div class="kpi-ic">⚠️</div><div><div class="kpi-num" id="pe-dav">0</div><div class="kpi-lbl">Atenção</div></div></div>
 
@@ -2036,7 +2056,7 @@ body {
 
       <button class="fbtn fav" onclick="setF('pe','aviso',this)">⚠️ Atenção</button>
 
-      <button class="fbtn fok" onclick="setF('pe','ok',this)">✅ Em Dia</button>
+      <button class="fbtn fok" onclick="setF('pe','ok',this)">⏳ Em Dia</button>
 
       <button class="badd" onclick="abrirModal('pe')">＋ Adicionar</button>
 
@@ -2052,7 +2072,7 @@ body {
 
       <div class="kpi t"><div class="kpi-ic">📄</div><div><div class="kpi-num" id="pe-lt">0</div><div class="kpi-lbl">Total Licenças</div></div></div>
 
-      <div class="kpi ok"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="pe-lv">0</div><div class="kpi-lbl">Válidas</div></div></div>
+      <div class="kpi cm"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="pe-lv">0</div><div class="kpi-lbl">Válidas</div></div></div>
 
       <div class="kpi av"><div class="kpi-ic">⚠️</div><div><div class="kpi-num" id="pe-lp">0</div><div class="kpi-lbl">Prox. Vencimento</div></div></div>
 
@@ -2138,7 +2158,9 @@ body {
 
       <div class="kpi t"><div class="kpi-ic">📋</div><div><div class="kpi-num" id="it-dt">0</div><div class="kpi-lbl">Total Prazos</div></div></div>
 
-      <div class="kpi ok"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="it-dok">0</div><div class="kpi-lbl">Em Dia</div></div></div>
+      <div class="kpi cm"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="it-dcm">0</div><div class="kpi-lbl">Cumpridos</div></div></div>
+
+      <div class="kpi ok"><div class="kpi-ic">⏳</div><div><div class="kpi-num" id="it-dok">0</div><div class="kpi-lbl">Em Dia</div></div></div>
 
       <div class="kpi av"><div class="kpi-ic">⚠️</div><div><div class="kpi-num" id="it-dav">0</div><div class="kpi-lbl">Atenção</div></div></div>
 
@@ -2174,7 +2196,7 @@ body {
 
       <button class="fbtn fav" onclick="setF('it','aviso',this)">⚠️ Atenção</button>
 
-      <button class="fbtn fok" onclick="setF('it','ok',this)">✅ Em Dia</button>
+      <button class="fbtn fok" onclick="setF('it','ok',this)">⏳ Em Dia</button>
 
       <button class="badd" onclick="abrirModal('it')">＋ Adicionar</button>
 
@@ -2190,7 +2212,7 @@ body {
 
       <div class="kpi t"><div class="kpi-ic">📄</div><div><div class="kpi-num" id="it-lt">0</div><div class="kpi-lbl">Total Licenças</div></div></div>
 
-      <div class="kpi ok"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="it-lv">0</div><div class="kpi-lbl">Válidas</div></div></div>
+      <div class="kpi cm"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="it-lv">0</div><div class="kpi-lbl">Válidas</div></div></div>
 
       <div class="kpi av"><div class="kpi-ic">⚠️</div><div><div class="kpi-num" id="it-lp">0</div><div class="kpi-lbl">Prox. Vencimento</div></div></div>
 
@@ -2276,7 +2298,9 @@ body {
 
       <div class="kpi t"><div class="kpi-ic">📋</div><div><div class="kpi-num" id="ga-dt">0</div><div class="kpi-lbl">Total Prazos</div></div></div>
 
-      <div class="kpi ok"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="ga-dok">0</div><div class="kpi-lbl">Em Dia</div></div></div>
+      <div class="kpi cm"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="ga-dcm">0</div><div class="kpi-lbl">Cumpridos</div></div></div>
+
+      <div class="kpi ok"><div class="kpi-ic">⏳</div><div><div class="kpi-num" id="ga-dok">0</div><div class="kpi-lbl">Em Dia</div></div></div>
 
       <div class="kpi av"><div class="kpi-ic">⚠️</div><div><div class="kpi-num" id="ga-dav">0</div><div class="kpi-lbl">Atenção</div></div></div>
 
@@ -2312,7 +2336,7 @@ body {
 
       <button class="fbtn fav" onclick="setF('ga','aviso',this)">⚠️ Atenção</button>
 
-      <button class="fbtn fok" onclick="setF('ga','ok',this)">✅ Em Dia</button>
+      <button class="fbtn fok" onclick="setF('ga','ok',this)">⏳ Em Dia</button>
 
       <button class="badd" onclick="abrirModal('ga')">＋ Adicionar</button>
 
@@ -2328,7 +2352,7 @@ body {
 
       <div class="kpi t"><div class="kpi-ic">📄</div><div><div class="kpi-num" id="ga-lt">0</div><div class="kpi-lbl">Total Licenças</div></div></div>
 
-      <div class="kpi ok"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="ga-lv">0</div><div class="kpi-lbl">Válidas</div></div></div>
+      <div class="kpi cm"><div class="kpi-ic">✅</div><div><div class="kpi-num" id="ga-lv">0</div><div class="kpi-lbl">Válidas</div></div></div>
 
       <div class="kpi av"><div class="kpi-ic">⚠️</div><div><div class="kpi-num" id="ga-lp">0</div><div class="kpi-lbl">Prox. Vencimento</div></div></div>
 
@@ -3320,17 +3344,19 @@ function diasR(s){ return Math.floor((parseD(s)-hoje())/86400000); }
 
 function calcStats(un){
 
-  let t=0,ok=0,av=0,at=0;
+  let t=0,ok=0,av=0,at=0,cm=0;
 
   DADOS[un].forEach(c=>c.prazos.forEach(p=>{
 
-    if(p.status==="cumprido") return; t++;
+    if(p.status==="cumprido"){ t++; cm++; return; }
+
+    t++;
 
     const s=getSt(p); if(s==="ok")ok++; else if(s==="aviso")av++; else if(s==="atraso")at++;
 
   }));
 
-  return{t,ok,av,at};
+  return{t,ok,av,at,cm};
 
 }
 
@@ -3376,9 +3402,11 @@ function showInner(un, view, btn){
 
 function renderDash(un){
 
-  const {t,ok,av,at}=calcStats(un);
+  const {t,ok,av,at,cm}=calcStats(un);
 
   document.getElementById(un+"-dt").textContent=t;
+
+  document.getElementById(un+"-dcm").textContent=cm;
 
   document.getElementById(un+"-dok").textContent=ok;
 
@@ -3392,7 +3420,9 @@ function renderDash(un){
 
   const donutCtx=document.getElementById(un+"-donut").getContext("2d");
 
-  const gOk=donutCtx.createLinearGradient(0,0,0,220);gOk.addColorStop(0,"#2ecc71");gOk.addColorStop(1,"#1a7a43");
+  const gCm=donutCtx.createLinearGradient(0,0,0,220);gCm.addColorStop(0,"#2ecc71");gCm.addColorStop(1,"#1a7a43");
+
+  const gOk=donutCtx.createLinearGradient(0,0,0,220);gOk.addColorStop(0,"#7c6fbf");gOk.addColorStop(1,"#3b3d9c");
 
   const gAv=donutCtx.createLinearGradient(0,0,0,220);gAv.addColorStop(0,"#f39c12");gAv.addColorStop(1,"#c0710a");
 
@@ -3404,15 +3434,15 @@ function renderDash(un){
 
     data:{
 
-      labels:["Em Dia","Atenção","Atrasado"],
+      labels:["Cumprido","Em Dia","Atenção","Atrasado"],
 
       datasets:[{
 
-        data:[ok,av,at],
+        data:[cm,ok,av,at],
 
-        backgroundColor:[gOk,gAv,gAt],
+        backgroundColor:[gCm,gOk,gAv,gAt],
 
-        hoverBackgroundColor:["#27ae60","#e67e22","#c0392b"],
+        hoverBackgroundColor:["#27ae60","#5b5ea6","#e67e22","#c0392b"],
 
         borderWidth:4, borderColor:"#fff",
 
@@ -3456,7 +3486,7 @@ function renderDash(un){
 
                 const pct=total>0?Math.round(val/total*100):0;
 
-                return{text:label+": "+pct+"% ("+val+")",fillStyle:["#27ae60","#e67e22","#c0392b"][i],strokeStyle:"transparent",pointStyle:"circle",hidden:false,index:i};
+                return{text:label+": "+pct+"% ("+val+")",fillStyle:["#27ae60","#5b5ea6","#e67e22","#c0392b"][i],strokeStyle:"transparent",pointStyle:"circle",hidden:false,index:i};
 
               });
 
@@ -3542,11 +3572,11 @@ function renderDash(un){
 
     const numStyle="font-family:Lexend,sans-serif;font-weight:700;color:#1a3d2b;font-size:12px";
 
-    const diasColor=p.st==="atraso"?"#7b1d1d":p.st==="aviso"?"#856404":"#155724";
+    const diasColor=p.st==="atraso"?"#7b1d1d":p.st==="aviso"?"#856404":"#3b3d9c";
 
     const badgeCls=p.st==="atraso"?"bsm atraso":p.st==="aviso"?"bsm aviso":"bsm ok";
 
-    const badgeTxt=p.st==="atraso"?"🚨 Atrasado":p.st==="aviso"?"⚠️ Atenção":"✅ Em Dia";
+    const badgeTxt=p.st==="atraso"?"🚨 Atrasado":p.st==="aviso"?"⚠️ Atenção":"⏳ Em Dia";
 
     return `<tr>
 
