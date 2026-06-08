@@ -2494,11 +2494,13 @@ body {
 
         <option value="">Automático 🔄</option>
 
-        <option value="cumprido">Cumprido ✅</option>
+        <option value="valido">Válido ✅</option>
 
         <option value="prox">Próximo de vencer ⚠️</option>
 
         <option value="vencido">Vencido 🚨</option>
+
+        <option value="ausente">Ausente 📁</option>
 
       </select>
 
@@ -4376,7 +4378,7 @@ function renderLic(un){
 
       valido:  ["lbadge valido",  "✅ Válido"],
 
-      cumprido: ["lbadge valido",  "✅ Cumprido"],
+      cumprido: ["lbadge valido",  "✅ Válido"],
 
       prox:    ["lbadge prox",    "⚠️ Prox. Venc."],
 
@@ -4390,7 +4392,7 @@ function renderLic(un){
 
     let diasTxt="";
 
-    if(dias!==null && st!=="cumprido"){
+    if(dias!==null && st!=="cumprido" && st!=="valido"){
 
       if(dias<0) diasTxt=`<div style="font-size:10px;color:#7b1d1d;font-family:'Lexend',sans-serif;font-weight:700;margin-top:2px;">${Math.abs(dias)}d vencido</div>`;
 
