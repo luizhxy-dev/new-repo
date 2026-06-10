@@ -1,0 +1,163 @@
+/**
+ * ==============================================================================
+ * INSTRUÇÕES PARA CONFIGURAÇÃO DA SINCRONIZAÇÃO (GRAVAÇÃO AUTOMÁTICA)
+ * ==============================================================================
+ * 
+ * Siga os passos abaixo para conectar o seu Dashboard à planilha de forma bidirecional:
+ * 
+ * 1. Abra a sua planilha do Google Sheets:
+ *    https://docs.google.com/spreadsheets/d/1_Lh54dqjscfNBpRsW81qtN42xOkMPlSKshU7anh5aR4
+ * 
+ * 2. No menu superior, clique em "Extensões" (Extensions) -> "Apps Script".
+ * 
+ * 3. Apague qualquer código existente no editor e cole TODO o código Javascript
+ *    que está no bloco "CÓDIGO DO SCRIPT" abaixo.
+ * 
+ * 4. Salve o projeto clicando no ícone do disquete (ou Ctrl + S) e dê um nome
+ *    (ex: "Sincronizador Natto").
+ * 
+ * 5. Clique no botão azul "Implantar" (Deploy) no canto superior direito -> "Nova implantação" (New deployment).
+ * 
+ * 6. Na janela que abrir, clique na engrenagem de configuração de tipo ao lado de
+ *    "Selecionar tipo" e selecione "App da Web" (Web app).
+ * 
+ * 7. Preencha as configurações da seguinte forma:
+ *    - Descrição: "Sincronização Natto v1"
+ *    - Executar como: "Eu" (Seu e-mail do Google)
+ *    - Quem tem acesso: "Qualquer pessoa" (Anyone) <-- IMPORTANTE!
+ * 
+ * 8. Clique em "Implantar" (Deploy). O Google solicitará permissão de acesso à sua
+ *    planilha. Siga as instruções na tela e autorize (vá em "Avançado" e "Acessar...").
+ * 
+ * 9. O Google gerará uma "URL do app da Web". Copie essa URL.
+ * 
+ * 10. Abra o seu Dashboard no navegador, clique no ícone de engrenagem (⚙️) no cabeçalho,
+ *     cole a URL que você copiou e clique em "Salvar URL".
+ * 
+ * Pronto! Agora, sempre que você adicionar um prazo, condicionante ou licença
+ * pelo dashboard, as modificações serão enviadas em tempo real para a sua Planilha Google.
+ */
+
+// ==============================================================================
+// CÓDIGO DO SCRIPT (COLE ESTE BLOCO NO EDITOR DO GOOGLE APPS SCRIPT)
+// ==============================================================================
+
+function doPost(e) {
+  try {
+    const payload = JSON.parse(e.postData.contents);
+    const action = payload.action;
+    const data = payload.data;
+    
+    const doc = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // Mapeamento dos códigos internos de layout para os nomes das abas/unidades na planilha
+    const unitNames = {
+      "bj": "Belo Jardim",
+      "pe": "Pesqueira",
+      "it": "Itapissuma",
+      "ga": "Garanhuns"
+    };
+    
+    if (action === "syncCondicionantes") {
+      const sheet = doc.getSheetByName("Condicionantes");
+      if (!sheet) {
+        return ContentService.createTextOutput(JSON.stringify({ success: false, error: "Aba 'Condicionantes' nao encontrada." }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      const headers = ["Unidade", "CNPJ", "Item", "Condicionante / Obrigação", "Data Prazo", "Protocolo / Obs.", "Status"];
+      const rows = [headers];
+      const cnpjs = payload.cnpjs || {};
+      
+      for (const un in data) {
+        const items = data[un];
+        items.forEach(item => {
+          item.prazos.forEach(prazo => {
+            // Converte a data de YYYY-MM-DD de volta para DD/MM/YYYY
+            const dateParts = prazo.data.split("-");
+            let displayDate = prazo.data;
+            if (dateParts.length === 3) {
+              displayDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+            }
+            
+            const statusText = prazo.status === "cumprido" ? "✅ Cumprido" : "⏳ Pendente";
+            
+            rows.push([
+              unitNames[un] || un,
+              cnpjs[un] || "",
+              item.num,
+              item.desc,
+              displayDate,
+              prazo.obs || "",
+              statusText
+            ]);
+          });
+        });
+      }
+      
+      sheet.clearContents();
+      sheet.getRange(1, 1, rows.length, 7).setValues(rows);
+      return ContentService.createTextOutput(JSON.stringify({ success: true }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    if (action === "syncLicencas") {
+      const sheet = doc.getSheetByName("Licenças e Autorizações");
+      if (!sheet) {
+        return ContentService.createTextOutput(JSON.stringify({ success: false, error: "Aba 'Licencas e Autorizacoes' nao encontrada." }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      const headers = ["Unidade", "CNPJ", "Documento / Licença", "Órgão", "Código / Nº", "Emissão", "Validade", "Status"];
+      const rows = [headers];
+      const cnpjs = payload.cnpjs || {};
+      
+      for (const un in data) {
+        const lics = data[un];
+        lics.forEach(lic => {
+          const convertToDMY = (isoDate) => {
+            if (!isoDate) return "";
+            const parts = isoDate.split("-");
+            if (parts.length === 3) {
+              return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+            return isoDate;
+          };
+          
+          // Calcula automaticamente a string de status conforme a regra do negócio
+          let statusText = "⬜ Ausente";
+          if (lic.validade) {
+            const hoje = new Date(); hoje.setHours(0,0,0,0);
+            const val  = new Date(lic.validade); val.setHours(0,0,0,0);
+            const diff = Math.round((val - hoje) / 86400000);
+            if (diff < 0) statusText = "🔴 Vencido";
+            else if (diff <= 90) statusText = "⚠️ Próx. Venc.";
+            else statusText = "✅ Válido";
+          }
+          
+          rows.push([
+            unitNames[un] || un,
+            cnpjs[un] || "",
+            lic.nome,
+            lic.orgao || "",
+            lic.codigo || "",
+            convertToDMY(lic.emissao),
+            convertToDMY(lic.validade),
+            statusText
+          ]);
+        });
+      }
+      
+      sheet.clearContents();
+      sheet.getRange(1, 1, rows.length, 8).setValues(rows);
+      return ContentService.createTextOutput(JSON.stringify({ success: true }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({ success: false, error: "Acao nao suportada." }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
