@@ -54,8 +54,10 @@ function doGet(e) {
     const condSheet = doc.getSheetByName("Condicionantes");
     const condData  = condSheet ? condSheet.getDataRange().getValues() : [];
 
-    // Lê aba Licenças e Autorizações
-    const licSheet = doc.getSheetByName("Licenças e Autorizações");
+    // Lê aba Licenças e Autorizações (tenta variações do nome)
+    const licSheet = doc.getSheetByName("Licenças e Autorizações")
+                  || doc.getSheetByName("Licencas e Autorizacoes")
+                  || doc.getSheetByName("Licenças");
     const licData  = licSheet  ? licSheet.getDataRange().getValues()  : [];
 
     // Converte cada linha para array de strings (igual ao que o parseCSV retornaria).
@@ -101,9 +103,10 @@ function doPost(e) {
     };
     
     if (action === "syncCondicionantes") {
-      const sheet = doc.getSheetByName("Condicionantes");
+      let sheet = doc.getSheetByName("Condicionantes");
       if (!sheet) {
-        return buildResponse({ success: false, error: "Aba 'Condicionantes' nao encontrada." });
+        // Cria a aba automaticamente se não existir
+        sheet = doc.insertSheet("Condicionantes");
       }
       
       const headers = ["Unidade", "CNPJ", "Item", "Condicionante / Obrigação", "Data Prazo", "Protocolo / Obs.", "Status"];
@@ -142,9 +145,10 @@ function doPost(e) {
     }
 
     if (action === "syncLicencas") {
-      const sheet = doc.getSheetByName("Licenças e Autorizações");
+      let sheet = doc.getSheetByName("Licenças e Autorizações");
       if (!sheet) {
-        return buildResponse({ success: false, error: "Aba 'Licencas e Autorizacoes' nao encontrada." });
+        // Cria a aba automaticamente se não existir
+        sheet = doc.insertSheet("Licenças e Autorizações");
       }
       
       const headers = ["Unidade", "CNPJ", "Documento / Licença", "Órgão", "Código / Nº", "Emissão", "Validade", "Status"];

@@ -3306,6 +3306,8 @@ function loadDataFromSpreadsheet() {
 
     });
 
+    saveLocalData();
+
     databar.textContent = baseText + " | 🟢 Conectado à Planilha Google";
 
   }
@@ -3352,9 +3354,12 @@ function loadDataFromSpreadsheet() {
   // Rota primária: usa doGet do Apps Script (bidirecional, funciona mesmo com planilha privada)
   if (gasUrl) {
 
-    fetch(gasUrl)
+    fetch(gasUrl, { redirect: "follow" })
 
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
 
       .then(result => {
 
@@ -3920,7 +3925,7 @@ function _addP(un,id){ modalUnidade=un; addPrazoId=id; editId=null; editPrazoInd
 
 function fecharModal(){ document.getElementById("movl").classList.remove("open"); document.getElementById("fNum").disabled=false; document.getElementById("fDesc").disabled=false; document.getElementById("btnExcluirPrazo").style.display="none"; modalUnidade=null; editId=null; addPrazoId=null; editPrazoIndex=null; }
 
-function excluirPrazo(){ if(!confirm("Tem certeza de que deseja excluir este prazo?"))return; const un=modalUnidade; if(editId && editPrazoIndex!==null){ const c=DADOS[un].find(x=>x.id===editId); if(c.prazos.length===1){alert("A condicionante deve ter pelo menos um prazo.");return;} c.prazos.splice(editPrazoIndex,1); fecharModal(); renderGrid(un); renderDash(un); syncWithGoogleSheets("syncCondicionantes"); } }
+function excluirPrazo(){ if(!confirm("Tem certeza de que deseja excluir este prazo?"))return; const un=modalUnidade; if(editId && editPrazoIndex!==null){ const c=DADOS[un].find(x=>x.id===editId); if(c.prazos.length===1){alert("A condicionante deve ter pelo menos um prazo.");return;} c.prazos.splice(editPrazoIndex,1); fecharModal(); renderGrid(un); renderDash(un); saveLocalData(); syncWithGoogleSheets("syncCondicionantes"); } }
 
 function salvar(){
 
@@ -3938,8 +3943,38 @@ function salvar(){
 
   fecharModal(); renderGrid(un); renderDash(un);
 
+  saveLocalData();
+
   syncWithGoogleSheets("syncCondicionantes");
 
+}
+
+// ===== PERSISTÊNCIA LOCAL =====
+
+const LS_DADOS_KEY    = "natto_dados_v2";
+const LS_LICENCAS_KEY = "natto_licencas_v2";
+
+function saveLocalData() {
+  try {
+    localStorage.setItem(LS_DADOS_KEY,    JSON.stringify(DADOS));
+    localStorage.setItem(LS_LICENCAS_KEY, JSON.stringify(LICENCAS));
+  } catch(e) {}
+}
+
+function loadLocalData() {
+  try {
+    const d = localStorage.getItem(LS_DADOS_KEY);
+    const l = localStorage.getItem(LS_LICENCAS_KEY);
+    if (d) {
+      const parsed = JSON.parse(d);
+      ["bj","pe","it","ga"].forEach(un => { if (parsed[un] && parsed[un].length > 0) DADOS[un] = parsed[un]; });
+    }
+    if (l) {
+      const parsed = JSON.parse(l);
+      ["bj","pe","it","ga"].forEach(un => { if (parsed[un] && parsed[un].length > 0) LICENCAS[un] = parsed[un]; });
+    }
+    return !!(d || l);
+  } catch(e) { return false; }
 }
 
 // ===== DASHBOARD LICENÇAS =====
@@ -4570,6 +4605,8 @@ function salvarLic(){
 
   renderLicDash(un);
 
+  saveLocalData();
+
   syncWithGoogleSheets("syncLicencas");
 
 }
@@ -4782,14 +4819,20 @@ function syncWithGoogleSheets(action) {
 
 document.getElementById("databar").textContent="📅 Hoje: "+new Date().toLocaleDateString("pt-BR",{weekday:"long",year:"numeric",month:"long",day:"numeric"}).replace(/^./,c=>c.toUpperCase());
 
-renderDash("bj");
-
-["bj","pe","it","ga"].forEach(un=>{ renderLic(un); renderLicDash(un); });
+// Carrega cache local imediatamente (dados aparecem mesmo offline)
+if (loadLocalData()) {
+  renderDash("bj");
+  ["bj","pe","it","ga"].forEach(un=>{ renderLic(un); renderLicDash(un); });
+} else {
+  renderDash("bj");
+  ["bj","pe","it","ga"].forEach(un=>{ renderLic(un); renderLicDash(un); });
+}
 
 if (!localStorage.getItem("apps_script_url")) {
   localStorage.setItem("apps_script_url", "https://script.google.com/macros/s/AKfycbzFUO_-uyy3tINT4PC4pIah8eqGpHaxBU-7yq9rfy368d7WLfZLPrCyUQ0nhaKG204M/exec");
 }
 
+// Tenta sincronizar com a planilha em background (atualiza cache se houver dados)
 loadDataFromSpreadsheet();
 
 document.getElementById("movl").addEventListener("click",function(e){if(e.target===this)fecharModal();});
