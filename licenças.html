@@ -3212,175 +3212,78 @@ function updateUnitInfoDOM(un) {
 function loadDataFromSpreadsheet() {
 
   const gasUrl = localStorage.getItem("apps_script_url");
-
   const databar = document.getElementById("databar");
-
   const baseText = databar.textContent.split(" | ")[0];
 
-  databar.textContent = baseText + " | 🔄 Sincronizando com a planilha...";
+  databar.textContent = baseText + " | 🔄 Sincronizando...";
 
-  // Aplica condRows e licRows (arrays de arrays de strings) ao estado global e re-renderiza
+  // Aplica dados vindos da planilha, re-renderiza tudo e atualiza cache local
   function applySheetData(condRows, licRows) {
-
-    const unitMap = {
-
-      "Belo Jardim": "bj",
-
-      "Pesqueira": "pe",
-
-      "Itapissuma": "it",
-
-      "Garanhuns": "ga"
-
-    };
-
+    const unitMap = { "Belo Jardim":"bj", "Pesqueira":"pe", "Itapissuma":"it", "Garanhuns":"ga" };
     const cnpjs = {};
 
     condRows.forEach((row, i) => {
-
       if (i === 0 || row.length < 2) return;
-
       const un = unitMap[row[0].trim()];
-
-      if (un && !cnpjs[un]) {
-
-        cnpjs[un] = row[1].trim();
-
-      }
-
+      if (un && !cnpjs[un]) cnpjs[un] = row[1].trim();
     });
 
     const newDados    = transformCondicionantes(condRows);
-
     const newLicencas = transformLicencas(licRows);
 
-    ["bj", "pe", "it", "ga"].forEach(un => {
-
-      DADOS[un]    = newDados[un]    || [];
-
-      LICENCAS[un] = newLicencas[un] || [];
-
+    ["bj","pe","it","ga"].forEach(un => {
+      // Só substitui se a planilha trouxe dados (evita apagar com array vazio)
+      if (newDados[un]    && newDados[un].length    > 0) DADOS[un]    = newDados[un];
+      if (newLicencas[un] && newLicencas[un].length > 0) LICENCAS[un] = newLicencas[un];
     });
 
-    ["bj", "pe", "it", "ga"].forEach(un => {
-
+    ["bj","pe","it","ga"].forEach(un => {
       if (cnpjs[un]) {
-
-        const cnpjElem = document.getElementById("ui-" + un + "-cnpj");
-
-        if (cnpjElem) cnpjElem.textContent = cnpjs[un];
-
+        const el = document.getElementById("ui-"+un+"-cnpj");
+        if (el) el.textContent = cnpjs[un];
       }
-
       updateUnitInfoDOM(un);
-
     });
 
-    const activeUnidade = document.querySelector(".unidade.active");
-
-    let unId = "bj";
-
-    if (activeUnidade) {
-
-      unId = activeUnidade.id.replace("u-", "");
-
-    }
-
-    renderDash(unId);
-
-    renderGrid(unId);
-
-    renderLic(unId);
-
-    renderLicDash(unId);
-
-    ["bj", "pe", "it", "ga"].forEach(un => {
-
-      if (un !== unId) {
-
-        renderLic(un);
-
-        renderLicDash(un);
-
-      }
-
-    });
+    const unId = (document.querySelector(".unidade.active") || {id:"u-bj"}).id.replace("u-","");
+    renderDash(unId); renderGrid(unId); renderLic(unId); renderLicDash(unId);
+    ["bj","pe","it","ga"].forEach(un => { if (un !== unId) { renderLic(un); renderLicDash(un); } });
 
     saveLocalData();
-
     databar.textContent = baseText + " | 🟢 Conectado à Planilha Google";
-
   }
 
-  // Fallback: lê diretamente via CSV export público da planilha
+  // Fallback B: CSV público do Google Sheets
   function loadFromCSV() {
-
-    const CONDICIONANTES_URL = "https://docs.google.com/spreadsheets/d/1_Lh54dqjscfNBpRsW81qtN42xOkMPlSKshU7anh5aR4/export?format=csv&gid=0";
-
-    const LICENCAS_URL = "https://docs.google.com/spreadsheets/d/1_Lh54dqjscfNBpRsW81qtN42xOkMPlSKshU7anh5aR4/export?format=csv&gid=243782658";
+    const COND_URL = "https://docs.google.com/spreadsheets/d/1_Lh54dqjscfNBpRsW81qtN42xOkMPlSKshU7anh5aR4/export?format=csv&gid=0";
+    const LIC_URL  = "https://docs.google.com/spreadsheets/d/1_Lh54dqjscfNBpRsW81qtN42xOkMPlSKshU7anh5aR4/export?format=csv&gid=243782658";
 
     Promise.all([
-
-      fetch(CONDICIONANTES_URL).then(res => {
-
-        if (!res.ok) throw new Error("Erro ao buscar condicionantes");
-
-        return res.text();
-
-      }),
-
-      fetch(LICENCAS_URL).then(res => {
-
-        if (!res.ok) throw new Error("Erro ao buscar licenças");
-
-        return res.text();
-
-      })
-
+      fetch(COND_URL).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }),
+      fetch(LIC_URL).then(r  => { if (!r.ok) throw new Error(r.status); return r.text(); })
     ])
-
-    .then(([condText, licText]) => applySheetData(parseCSV(condText), parseCSV(licText)))
-
-    .catch(err => {
-
-      console.error("Erro ao sincronizar com a planilha:", err);
-
-      databar.textContent = baseText + " | 🔴 Usando dados locais (Offline)";
-
+    .then(([ct, lt]) => applySheetData(parseCSV(ct), parseCSV(lt)))
+    .catch(() => {
+      // Sem acesso ao CSV — mantém localStorage silenciosamente
+      databar.textContent = baseText + " | 🟡 Dados locais (planilha offline)";
     });
-
   }
 
-  // Rota primária: usa doGet do Apps Script (bidirecional, funciona mesmo com planilha privada)
+  // Rota principal: Apps Script doGet → retorna JSON com os dois sheets
+  // Requer reimplantação do script com a função doGet (ver google_apps_script.js)
   if (gasUrl) {
-
-    fetch(gasUrl, { redirect: "follow" })
-
-      .then(res => {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      })
-
+    fetch(gasUrl)
+      .then(res => res.json())
       .then(result => {
-
-        if (!result.success) throw new Error(result.error || "Erro no Apps Script");
-
+        if (!result.success) throw new Error(result.error || "Apps Script sem dados");
         applySheetData(result.condicionantes, result.licencas);
-
       })
-
-      .catch(err => {
-
-        console.warn("Apps Script doGet falhou, tentando CSV direto:", err);
-
+      .catch(() => {
+        // doGet falhou (CORS/deploy antigo) → tenta CSV
         loadFromCSV();
-
       });
-
   } else {
-
     loadFromCSV();
-
   }
 
 }
@@ -4820,13 +4723,9 @@ function syncWithGoogleSheets(action) {
 document.getElementById("databar").textContent="📅 Hoje: "+new Date().toLocaleDateString("pt-BR",{weekday:"long",year:"numeric",month:"long",day:"numeric"}).replace(/^./,c=>c.toUpperCase());
 
 // Carrega cache local imediatamente (dados aparecem mesmo offline)
-if (loadLocalData()) {
-  renderDash("bj");
-  ["bj","pe","it","ga"].forEach(un=>{ renderLic(un); renderLicDash(un); });
-} else {
-  renderDash("bj");
-  ["bj","pe","it","ga"].forEach(un=>{ renderLic(un); renderLicDash(un); });
-}
+loadLocalData();
+renderDash("bj");
+["bj","pe","it","ga"].forEach(un=>{ renderLic(un); renderLicDash(un); });
 
 if (!localStorage.getItem("apps_script_url")) {
   localStorage.setItem("apps_script_url", "https://script.google.com/macros/s/AKfycbwZgkMs9TS50QHk5bIHDnh9OwyIi1WgqZKzigDxC15AI-qJtjhx_G7GI0160X7Tdc2Y/exec");
