@@ -3222,12 +3222,6 @@ function loadDataFromSpreadsheet() {
   // Aplica condRows e licRows (arrays de arrays de strings) ao estado global e re-renderiza
   function applySheetData(condRows, licRows) {
 
-    // Se há edições locais pendentes, não sobrescrever com dados da planilha
-    if (localStorage.getItem("natto_lc_dirty") === "1") {
-      databar.textContent = baseText + " | 🟡 Edições locais pendentes (sincronização pendente)";
-      return;
-    }
-
     const unitMap = {
 
       "Belo Jardim": "bj",
@@ -3311,12 +3305,6 @@ function loadDataFromSpreadsheet() {
       }
 
     });
-
-    // Salva dados da planilha no cache local (sem flag dirty)
-    try {
-      localStorage.setItem("natto_lc_d", JSON.stringify(DADOS));
-      localStorage.setItem("natto_lc_l", JSON.stringify(LICENCAS));
-    } catch(e) {}
 
     databar.textContent = baseText + " | 🟢 Conectado à Planilha Google";
 
@@ -3932,7 +3920,7 @@ function _addP(un,id){ modalUnidade=un; addPrazoId=id; editId=null; editPrazoInd
 
 function fecharModal(){ document.getElementById("movl").classList.remove("open"); document.getElementById("fNum").disabled=false; document.getElementById("fDesc").disabled=false; document.getElementById("btnExcluirPrazo").style.display="none"; modalUnidade=null; editId=null; addPrazoId=null; editPrazoIndex=null; }
 
-function excluirPrazo(){ if(!confirm("Tem certeza de que deseja excluir este prazo?"))return; const un=modalUnidade; if(editId && editPrazoIndex!==null){ const c=DADOS[un].find(x=>x.id===editId); if(c.prazos.length===1){alert("A condicionante deve ter pelo menos um prazo.");return;} c.prazos.splice(editPrazoIndex,1); fecharModal(); renderGrid(un); renderDash(un); _saveLocal(); syncWithGoogleSheets("syncCondicionantes"); } }
+function excluirPrazo(){ if(!confirm("Tem certeza de que deseja excluir este prazo?"))return; const un=modalUnidade; if(editId && editPrazoIndex!==null){ const c=DADOS[un].find(x=>x.id===editId); if(c.prazos.length===1){alert("A condicionante deve ter pelo menos um prazo.");return;} c.prazos.splice(editPrazoIndex,1); fecharModal(); renderGrid(un); renderDash(un); syncWithGoogleSheets("syncCondicionantes"); } }
 
 function salvar(){
 
@@ -3949,8 +3937,6 @@ function salvar(){
   else{ if(!num||!desc){alert("Preencha número e descrição.");return;} const nid=DADOS[un].length>0?Math.max(...DADOS[un].map(x=>x.id))+1:1; DADOS[un].push({id:nid,num,desc,prazos:[{data,obs,status}]}); }
 
   fecharModal(); renderGrid(un); renderDash(un);
-
-  _saveLocal();
 
   syncWithGoogleSheets("syncCondicionantes");
 
@@ -4374,23 +4360,6 @@ const LICENCAS = {
 
 };
 
-// ===== PERSISTÊNCIA LOCAL =====
-function _saveLocal() {
-  try {
-    localStorage.setItem("natto_lc_d", JSON.stringify(DADOS));
-    localStorage.setItem("natto_lc_l", JSON.stringify(LICENCAS));
-    localStorage.setItem("natto_lc_dirty", "1");
-  } catch(e) {}
-}
-function _loadLocal() {
-  try {
-    const d = localStorage.getItem("natto_lc_d");
-    const l = localStorage.getItem("natto_lc_l");
-    if (d) { const p = JSON.parse(d); ["bj","pe","it","ga"].forEach(u => { if(p[u]) DADOS[u] = p[u]; }); }
-    if (l) { const p = JSON.parse(l); ["bj","pe","it","ga"].forEach(u => { if(p[u]) LICENCAS[u] = p[u]; }); }
-  } catch(e) {}
-}
-
 // ===== RENDER LICENÇAS =====
 
 function fmtDL(iso){
@@ -4601,8 +4570,6 @@ function salvarLic(){
 
   renderLicDash(un);
 
-  _saveLocal();
-
   syncWithGoogleSheets("syncLicencas");
 
 }
@@ -4654,8 +4621,6 @@ function salvarInfo(){
   document.getElementById("ui-"+un+"-validade").textContent= document.getElementById("iValidade").value.trim();
 
   fecharModalInfo();
-
-  _saveLocal();
 
   syncWithGoogleSheets("syncCondicionantes");
 
@@ -4762,9 +4727,6 @@ function syncWithGoogleSheets(action) {
 
     if (!result.success) throw new Error(result.error || "Erro no servidor");
 
-    // Sincronização confirmada — limpa o flag de edições locais pendentes
-    localStorage.removeItem("natto_lc_dirty");
-
     databar.textContent = baseText + " | 🟢 Sincronizado com sucesso";
 
     setTimeout(() => {
@@ -4820,15 +4782,12 @@ function syncWithGoogleSheets(action) {
 
 document.getElementById("databar").textContent="📅 Hoje: "+new Date().toLocaleDateString("pt-BR",{weekday:"long",year:"numeric",month:"long",day:"numeric"}).replace(/^./,c=>c.toUpperCase());
 
-// Restaura edições locais antes de renderizar
-_loadLocal();
-
 renderDash("bj");
 
 ["bj","pe","it","ga"].forEach(un=>{ renderLic(un); renderLicDash(un); });
 
 if (!localStorage.getItem("apps_script_url")) {
-  localStorage.setItem("apps_script_url", "https://script.google.com/macros/s/AKfycbxK6WfpyyQK3S0aNc3iX9Srldef5TRGFFjhfDdSqdxPgH38E3S0WJMBSium9GVJlBzY/exec");
+  localStorage.setItem("apps_script_url", "https://script.google.com/macros/s/AKfycbzJy2QQMVO8eXRrTY57o8DiKEQREe2oykOt7Zoihxpm9JphZ24fzpzfwaf10fqwR34c/exec");
 }
 
 loadDataFromSpreadsheet();
