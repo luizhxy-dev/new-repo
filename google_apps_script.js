@@ -42,6 +42,48 @@
 // CÓDIGO DO SCRIPT (COLE ESTE BLOCO NO EDITOR DO GOOGLE APPS SCRIPT)
 // ==============================================================================
 
+/**
+ * doGet — leitura bidirecional: o dashboard faz GET para carregar os dados
+ * atuais direto da planilha (evita depender de CSV público ou CORS no POST).
+ */
+function doGet(e) {
+  try {
+    const doc = SpreadsheetApp.getActiveSpreadsheet();
+
+    // Lê aba Condicionantes
+    const condSheet = doc.getSheetByName("Condicionantes");
+    const condData  = condSheet ? condSheet.getDataRange().getValues() : [];
+
+    // Lê aba Licenças e Autorizações
+    const licSheet = doc.getSheetByName("Licenças e Autorizações");
+    const licData  = licSheet  ? licSheet.getDataRange().getValues()  : [];
+
+    // Converte cada linha para array de strings (igual ao que o parseCSV retornaria).
+    // Datas vindas do Sheets como Date object são formatadas como DD/MM/YYYY.
+    const cellToStr = (cell) => {
+      if (cell === null || cell === undefined || cell === "") return "";
+      if (cell instanceof Date) {
+        const d = String(cell.getDate()).padStart(2, "0");
+        const m = String(cell.getMonth() + 1).padStart(2, "0");
+        const y = cell.getFullYear();
+        return `${d}/${m}/${y}`;
+      }
+      return String(cell);
+    };
+    const toStrRows = (rows) => rows.map(row => row.map(cellToStr));
+
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      condicionantes: toStrRows(condData),
+      licencas: toStrRows(licData)
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
@@ -61,8 +103,7 @@ function doPost(e) {
     if (action === "syncCondicionantes") {
       const sheet = doc.getSheetByName("Condicionantes");
       if (!sheet) {
-        return ContentService.createTextOutput(JSON.stringify({ success: false, error: "Aba 'Condicionantes' nao encontrada." }))
-          .setMimeType(ContentService.MimeType.JSON);
+        return buildResponse({ success: false, error: "Aba 'Condicionantes' nao encontrada." });
       }
       
       const headers = ["Unidade", "CNPJ", "Item", "Condicionante / Obrigação", "Data Prazo", "Protocolo / Obs.", "Status"];
@@ -97,15 +138,13 @@ function doPost(e) {
       
       sheet.clearContents();
       sheet.getRange(1, 1, rows.length, 7).setValues(rows);
-      return ContentService.createTextOutput(JSON.stringify({ success: true }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return buildResponse({ success: true });
     }
-    
+
     if (action === "syncLicencas") {
       const sheet = doc.getSheetByName("Licenças e Autorizações");
       if (!sheet) {
-        return ContentService.createTextOutput(JSON.stringify({ success: false, error: "Aba 'Licencas e Autorizacoes' nao encontrada." }))
-          .setMimeType(ContentService.MimeType.JSON);
+        return buildResponse({ success: false, error: "Aba 'Licencas e Autorizacoes' nao encontrada." });
       }
       
       const headers = ["Unidade", "CNPJ", "Documento / Licença", "Órgão", "Código / Nº", "Emissão", "Validade", "Status"];
@@ -150,14 +189,17 @@ function doPost(e) {
       
       sheet.clearContents();
       sheet.getRange(1, 1, rows.length, 8).setValues(rows);
-      return ContentService.createTextOutput(JSON.stringify({ success: true }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return buildResponse({ success: true });
     }
-    
-    return ContentService.createTextOutput(JSON.stringify({ success: false, error: "Acao nao suportada." }))
-      .setMimeType(ContentService.MimeType.JSON);
+
+    return buildResponse({ success: false, error: "Acao nao suportada." });
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return buildResponse({ success: false, error: err.toString() });
   }
+}
+
+// Retorna JSON com headers CORS para que o dashboard possa ler a resposta sem no-cors.
+function buildResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }
