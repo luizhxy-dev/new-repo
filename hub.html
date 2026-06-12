@@ -252,6 +252,7 @@ footer{
     <div class="user-chip">
       <div class="user-avatar" id="userAvatar">U</div>
       <span class="user-name" id="userName">Usuário</span>
+      <span id="userRole" style="font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:100px;background:rgba(141,198,63,.15);color:#8dc63f;margin-left:4px;"></span>
     </div>
     <button class="btn-logout" onclick="logout()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -317,25 +318,6 @@ footer{
       </div>
     </a>
 
-    <!-- EM BREVE -->
-    <div class="sys-card blue soon">
-      <span class="card-badge soon-badge">Em breve</span>
-      <div class="card-icon">🌿</div>
-      <h2 class="card-title">Inventário de Emissões</h2>
-      <p class="card-desc">Cálculo de GEE, rastreio de emissões e metas de descarbonização corporativa.</p>
-      <div class="card-modules">
-        <span class="module-tag">Escopo 1</span>
-        <span class="module-tag">Escopo 2</span>
-        <span class="module-tag">Escopo 3</span>
-      </div>
-      <div class="card-arrow" style="opacity:.4">
-        Em desenvolvimento
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12"/>
-          <polyline points="12 5 19 12 12 19"/>
-        </svg>
-      </div>
-    </div>
 
   </div>
 
@@ -360,7 +342,7 @@ footer{
 // Guard — redireciona se não autenticado
 const auth = sessionStorage.getItem('natto_auth') || localStorage.getItem('natto_remember');
 if (!auth) {
-  location.href = 'login.html';
+  location.href = 'index.html';
 }
 
 try {
@@ -370,6 +352,9 @@ try {
   document.getElementById('userName').textContent = display;
   document.getElementById('userAvatar').textContent = display.charAt(0).toUpperCase();
   document.getElementById('helloMsg').textContent = `Olá, ${display}`;
+  const roleLabel = u.role === 'editor' ? 'Editor' : 'Visualizador';
+  const roleEl = document.getElementById('userRole');
+  if (roleEl) roleEl.textContent = roleLabel;
 } catch {}
 
 function logout() {
