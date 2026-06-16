@@ -8,7 +8,11 @@
 <script>
 (function(){
   var auth = sessionStorage.getItem('natto_auth') || localStorage.getItem('natto_remember');
-  if (!auth) { location.replace('login.html'); }
+  if (!auth) { location.replace('index.html'); }
+  try {
+    var u = JSON.parse(auth);
+    if (u.role !== 'editor') document.documentElement.classList.add('viewer-mode');
+  } catch {}
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -345,6 +349,7 @@ select.f-input{cursor:pointer;}
 .mtr-btn-view:hover{background:#C5E0F5;}
 .mtr-btn-del{background:var(--red-light);color:var(--red);margin-left:2px;}
 .mtr-btn-del:hover{background:#F5C6CC;}
+.viewer-mode .edit-only{display:none!important;}
 .pdf-modal{
   display:none;position:fixed;inset:0;z-index:1000;
   background:rgba(0,0,0,.7);align-items:center;justify-content:center;
@@ -462,9 +467,9 @@ select.f-input{cursor:pointer;}
   <div class="sidebar-section">Navegação</div>
   <button class="nav-item active" onclick="navTo(this,'dashboard')"><span class="ni">📊</span> Dashboard</button>
   <button class="nav-item" onclick="navTo(this,'consolidado')"><span class="ni">🗺</span> Visão Consolidada</button>
-  <button class="nav-item" onclick="navTo(this,'lancamento')"><span class="ni">➕</span> Lançar Resíduo</button>
+  <button class="nav-item edit-only" onclick="navTo(this,'lancamento')"><span class="ni">➕</span> Lançar Resíduo</button>
   <button class="nav-item" onclick="navTo(this,'historico')"><span class="ni">📋</span> Histórico</button>
-  <button class="nav-item" onclick="navTo(this,'configuracoes')" id="nav-cfg"><span class="ni">⚙️</span> Configurações</button>
+  <button class="nav-item edit-only" onclick="navTo(this,'configuracoes')" id="nav-cfg"><span class="ni">⚙️</span> Configurações</button>
 
   <div class="sidebar-section" style="margin-top:6px">Unidades</div>
   <div class="unit-pills" id="sidebar-units"></div>
@@ -833,7 +838,10 @@ function carregarDadosDaPlanilha() {
           Reciclagem: +r.Reciclagem
         });
       });
-      DB.daily = novo;
+      // Merge: só substitui unidades que a planilha trouxe dados (preserva hardcoded das demais)
+      Object.keys(novo).forEach(function(u) {
+        if (novo[u] && novo[u].length > 0) DB.daily[u] = novo[u];
+      });
       reconstruirAgregados();
       // Atualiza a visualização atual
       if (currentPage === 'dashboard') renderDashboard(currentUnit);
@@ -1325,7 +1333,9 @@ function addEntry() {
 
   renderSessionTable();
   clearForm();
-  if(currentUnit===unidade&&currentPage==='dashboard') renderDashboard(currentUnit);
+  // Garante que o dashboard ativo reflita a unidade do registro recém-lançado
+  if(currentUnit !== unidade){ currentUnit = unidade; buildSidebarUnits(); }
+  if(currentPage==='dashboard') renderDashboard(currentUnit);
   if(currentPage==='consolidado') renderConsolidado();
   if(currentPage==='historico') renderHistorico();
 }
