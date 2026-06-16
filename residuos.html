@@ -756,7 +756,7 @@ const UCOL = {
 };
 
 // ── URL do Apps Script Web App (integração com Google Sheets) ──
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyM4d8XcPxmzDKy102cTsCNE605_q2HtyIwP1qNGOq-e7y29w2B_BreodjcQZITl7Yc/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycby7ZzQn_HuOY_-JK9me9shsmjiY14nZzfxEs_egbg1wqTOHXn6O59WS2gR4yeAjv1Gr/exec';
 
 let sessionEntries = [];
 let charts = {};
@@ -804,11 +804,25 @@ function carregarDadosDaPlanilha() {
     .then(function(res) { return res.json(); })
     .then(function(json) {
       if (!json.ok || !json.registros || !json.registros.length) return;
-      // Reconstrói DB.daily agrupado por unidade
-      const novo = {};
+      // Reconstrói DB.daily agrupado por unidade (inicializado com as 4 unidades padrão)
+      const novo = {
+        'Belo Jardim': [],
+        'Pesqueira': [],
+        'Garanhuns': [],
+        'Itapissuma': []
+      };
+      const unitMap = {
+        'belo jardim': 'Belo Jardim',
+        'pesqueira': 'Pesqueira',
+        'garanhuns': 'Garanhuns',
+        'itapissuma': 'Itapissuma'
+      };
       json.registros.forEach(function(r) {
-        const u = r.Unidade;
-        if (!novo[u]) novo[u] = [];
+        if (!r.Unidade) return;
+        const normalizedUnitName = r.Unidade.trim().toLowerCase();
+        const u = unitMap[normalizedUnitName];
+        if (!u) return; // ignora se não for uma das 4 unidades padrão
+        
         novo[u].push({
           Data:       r.Data,
           Tipo:       r.Tipo,

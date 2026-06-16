@@ -42,6 +42,18 @@
 // CÓDIGO DO SCRIPT (COLE ESTE BLOCO NO EDITOR DO GOOGLE APPS SCRIPT)
 // ==============================================================================
 
+function getSheetCaseInsensitive(doc, name) {
+  const sheets = doc.getSheets();
+  const lowerName = name.toLowerCase().trim();
+  for (let i = 0; i < sheets.length; i++) {
+    const sheetName = sheets[i].getName().toLowerCase().trim();
+    if (sheetName === lowerName) {
+      return sheets[i];
+    }
+  }
+  return null;
+}
+
 /**
  * doGet — leitura bidirecional: o dashboard faz GET para carregar os dados
  * atuais direto da planilha (evita depender de CSV público ou CORS no POST).
@@ -51,13 +63,13 @@ function doGet(e) {
     const doc = SpreadsheetApp.getActiveSpreadsheet();
 
     // Lê aba Condicionantes
-    const condSheet = doc.getSheetByName("Condicionantes");
+    const condSheet = getSheetCaseInsensitive(doc, "Condicionantes");
     const condData  = condSheet ? condSheet.getDataRange().getValues() : [];
 
     // Lê aba Licenças e Autorizações (tenta variações do nome)
-    const licSheet = doc.getSheetByName("Licenças e Autorizações")
-                  || doc.getSheetByName("Licencas e Autorizacoes")
-                  || doc.getSheetByName("Licenças");
+    const licSheet = getSheetCaseInsensitive(doc, "Licenças e Autorizações")
+                  || getSheetCaseInsensitive(doc, "Licencas e Autorizacoes")
+                  || getSheetCaseInsensitive(doc, "Licenças");
     const licData  = licSheet  ? licSheet.getDataRange().getValues()  : [];
 
     // Converte cada linha para array de strings (igual ao que o parseCSV retornaria).
@@ -70,7 +82,7 @@ function doGet(e) {
         const y = cell.getFullYear();
         return `${d}/${m}/${y}`;
       }
-      return String(cell);
+      return String(cell).trim();
     };
     const toStrRows = (rows) => rows.map(row => row.map(cellToStr));
 
@@ -103,7 +115,7 @@ function doPost(e) {
     };
     
     if (action === "syncCondicionantes") {
-      let sheet = doc.getSheetByName("Condicionantes");
+      let sheet = getSheetCaseInsensitive(doc, "Condicionantes");
       if (!sheet) {
         // Cria a aba automaticamente se não existir
         sheet = doc.insertSheet("Condicionantes");
@@ -145,7 +157,8 @@ function doPost(e) {
     }
 
     if (action === "syncLicencas") {
-      let sheet = doc.getSheetByName("Licenças e Autorizações");
+      let sheet = getSheetCaseInsensitive(doc, "Licenças e Autorizações")
+               || getSheetCaseInsensitive(doc, "Licencas e Autorizacoes");
       if (!sheet) {
         // Cria a aba automaticamente se não existir
         sheet = doc.insertSheet("Licenças e Autorizações");

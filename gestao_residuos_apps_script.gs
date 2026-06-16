@@ -318,10 +318,10 @@ function doGet(e) {
             ds = String(dv).substring(0, 10);
           }
           records.push({
-            Unidade:    String(r[0]),
+            Unidade:    String(r[0]).trim(),
             Data:       ds,
-            Tipo:       String(r[2]),
-            MTR:        String(r[3]),
+            Tipo:       String(r[2]).trim(),
+            MTR:        String(r[3]).trim(),
             Classe_I:   parseFloat(r[4])  || 0,
             Classe_II:  parseFloat(r[5])  || 0,
             Aterro:     parseFloat(r[6])  || 0,
@@ -379,11 +379,12 @@ function doPost(e) {
     var dados = JSON.parse(e.postData.contents);
     var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
 
+    var nomeUnidade = (dados.Unidade || '').trim();
     var novaLinha = [
-      dados.Unidade   || '',
-      dados.Data      || '',
-      dados.Tipo      || '',
-      dados.MTR       || '',
+      nomeUnidade,
+      (dados.Data      || '').trim(),
+      (dados.Tipo      || '').trim(),
+      (dados.MTR       || '').trim(),
       parseFloat(dados.Classe_I)   || 0,
       parseFloat(dados.Classe_II)  || 0,
       parseFloat(dados.Aterro)     || 0,
@@ -395,8 +396,17 @@ function doPost(e) {
     if (!abaBrutos) abaBrutos = ss.insertSheet('Dados Brutos');
     abaBrutos.appendRow(novaLinha);
 
-    // Grava na aba da unidade (sem a coluna Unidade)
-    var abaUnidade = ss.getSheetByName(dados.Unidade);
+    // Grava na aba da unidade (sem a coluna Unidade) de forma case-insensitive
+    var abaUnidade = ss.getSheetByName(nomeUnidade);
+    if (!abaUnidade) {
+      var abas = ss.getSheets();
+      for (var i = 0; i < abas.length; i++) {
+        if (abas[i].getName().trim().toLowerCase() === nomeUnidade.toLowerCase()) {
+          abaUnidade = abas[i];
+          break;
+        }
+      }
+    }
     if (abaUnidade) abaUnidade.appendRow(novaLinha.slice(1));
 
     return ContentService
