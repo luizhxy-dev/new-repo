@@ -1571,7 +1571,9 @@ body {
 }
 
 .viewer-mode .ui-edit-btn,
-.viewer-mode .badd { display: none !important; }
+.viewer-mode .badd,
+.viewer-mode .lic-add-btn,
+.viewer-mode .lic-edit-btn { display: none !important; }
 
 /* ===================== LICENÇAS TABLE ===================== */
 
@@ -3243,10 +3245,14 @@ function loadDataFromSpreadsheet() {
     const newDados    = transformCondicionantes(condRows);
     const newLicencas = transformLicencas(licRows);
 
+    // Não sobrescreve dados locais se há uma edição recente ainda não confirmada pela planilha
+    const _syncTs = parseInt(localStorage.getItem('natto_sync_ts') || '0');
+    const _hasPending = _syncTs > 0 && (Date.now() - _syncTs) < 30000;
+
     ["bj","pe","it","ga"].forEach(un => {
       // Só substitui se a planilha trouxe dados (evita apagar com array vazio)
-      if (newDados[un]    && newDados[un].length    > 0) DADOS[un]    = newDados[un];
-      if (newLicencas[un] && newLicencas[un].length > 0) LICENCAS[un] = newLicencas[un];
+      if (newDados[un]    && newDados[un].length    > 0 && !_hasPending) DADOS[un]    = newDados[un];
+      if (newLicencas[un] && newLicencas[un].length > 0 && !_hasPending) LICENCAS[un] = newLicencas[un];
     });
 
     ["bj","pe","it","ga"].forEach(un => {
@@ -3857,6 +3863,8 @@ function salvar(){
   fecharModal(); renderGrid(un); renderDash(un);
 
   saveLocalData();
+
+  localStorage.setItem('natto_sync_ts', Date.now());
 
   syncWithGoogleSheets("syncCondicionantes");
 
@@ -4533,6 +4541,8 @@ function salvarLic(){
 
   saveLocalData();
 
+  localStorage.setItem('natto_sync_ts', Date.now());
+
   syncWithGoogleSheets("syncLicencas");
 
 }
@@ -4690,6 +4700,8 @@ function syncWithGoogleSheets(action) {
 
     if (!result.success) throw new Error(result.error || "Erro no servidor");
 
+    localStorage.removeItem('natto_sync_ts');
+
     databar.textContent = baseText + " | 🟢 Sincronizado com sucesso";
 
     setTimeout(() => {
@@ -4761,6 +4773,8 @@ if (!currentSavedUrl || currentSavedUrl === oldDefaultUrl || currentSavedUrl ===
 loadDataFromSpreadsheet();
 
 document.getElementById("movl").addEventListener("click",function(e){if(e.target===this)fecharModal();});
+
+document.getElementById("movl-lic").addEventListener("click",function(e){if(e.target===this)fecharModalLic();});
 
 document.getElementById("movl-info").addEventListener("click",function(e){if(e.target===this)fecharModalInfo();});
 
