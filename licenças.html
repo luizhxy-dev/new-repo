@@ -4751,9 +4751,9 @@ renderDash("bj");
 ["bj","pe","it","ga"].forEach(un=>{ renderLic(un); renderLicDash(un); });
 
 const oldDefaultUrl = "https://script.google.com/macros/s/AKfycbwZgkMs9TS50QHk5bIHDnh9OwyIi1WgqZKzigDxC15AI-qJtjhx_G7GI0160X7Tdc2Y/exec";
-const newDefaultUrl = "https://script.google.com/macros/s/AKfycbzknh4Jtg38n0Qc00whUATFQQIP-OePfRjWAeHiSLlXuEp832y1WbuJ3c78rSjolmpA/exec";
+const newDefaultUrl = "https://script.google.com/macros/s/AKfycbwl7couMf_cX9y_6d1VFeruGZ7qDkJ39xEzP21qU0jWQqVCZ110c-cjveOMSeh8knE/exec";
 const currentSavedUrl = localStorage.getItem("apps_script_url");
-if (!currentSavedUrl || currentSavedUrl === oldDefaultUrl) {
+if (!currentSavedUrl || currentSavedUrl === oldDefaultUrl || currentSavedUrl === "https://script.google.com/macros/s/AKfycbzknh4Jtg38n0Qc00whUATFQQIP-OePfRjWAeHiSLlXuEp832y1WbuJ3c78rSjolmpA/exec") {
   localStorage.setItem("apps_script_url", newDefaultUrl);
 }
 
