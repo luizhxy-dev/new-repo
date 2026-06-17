@@ -181,10 +181,12 @@ function doPost(e) {
           };
           
           // Calcula automaticamente a string de status conforme a regra do negócio
+          // Usa new Date(y, m-1, d) para evitar bug de fuso horário com strings ISO.
           let statusText = "⬜ Ausente";
           if (lic.validade) {
             const hoje = new Date(); hoje.setHours(0,0,0,0);
-            const val  = new Date(lic.validade); val.setHours(0,0,0,0);
+            const vp = lic.validade.split("-");
+            const val = new Date(parseInt(vp[0]), parseInt(vp[1])-1, parseInt(vp[2]));
             const diff = Math.round((val - hoje) / 86400000);
             if (diff < 0) statusText = "🔴 Vencido";
             else if (diff <= 90) statusText = "⚠️ Próx. Venc.";

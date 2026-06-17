@@ -3884,7 +3884,15 @@ function loadLocalData() {
     }
     if (l) {
       const parsed = JSON.parse(l);
-      ["bj","pe","it","ga"].forEach(un => { if (parsed[un] && parsed[un].length > 0) LICENCAS[un] = parsed[un]; });
+      // Limpa status que bloqueiam o recálculo automático por data
+      ["bj","pe","it","ga"].forEach(un => {
+        if (parsed[un] && parsed[un].length > 0) {
+          parsed[un].forEach(lic => {
+            if (lic.validade && ["valido","prox","vencido"].includes(lic.status)) lic.status = "";
+          });
+          LICENCAS[un] = parsed[un];
+        }
+      });
     }
     return !!(d || l);
   } catch(e) { return false; }
@@ -4232,77 +4240,77 @@ const LICENCAS = {
 
   bj: [
 
-    {id:1, nome:"Licença de Operação",           emissao:"2026-02-24", validade:"2027-02-24", codigo:"03.26.02.001294-7",  orgao:"CPRH",                          status:"valido"},
+    {id:1, nome:"Licença de Operação",           emissao:"2026-02-24", validade:"2027-02-24", codigo:"03.26.02.001294-7",  orgao:"CPRH",                          status:""},
 
-    {id:2, nome:"Cadastro Técnico Federal",        emissao:"2026-02-13", validade:"2026-05-13", codigo:"203925",            orgao:"IBAMA",                         status:"valido"},
+    {id:2, nome:"Cadastro Técnico Federal",        emissao:"2026-02-13", validade:"2026-05-13", codigo:"203925",            orgao:"IBAMA",                         status:""},
 
-    {id:3, nome:"Alvará de Funcionamento",         emissao:"1997-02-24", validade:"2025-12-31", codigo:"903485",            orgao:"Prefeitura Municipal de Belo Jardim", status:"vencido"},
+    {id:3, nome:"Alvará de Funcionamento",         emissao:"1997-02-24", validade:"2025-12-31", codigo:"903485",            orgao:"Prefeitura Municipal de Belo Jardim", status:""},
 
-    {id:4, nome:"Outorga para Lançamento de Efluente", emissao:"2021-09-16", validade:"2026-09-19", codigo:"614-S/21",     orgao:"APAC",                          status:"valido"},
+    {id:4, nome:"Outorga para Lançamento de Efluente", emissao:"2021-09-16", validade:"2026-09-19", codigo:"614-S/21",     orgao:"APAC",                          status:""},
 
-    {id:5, nome:"Registro de Serviço de Inspeção Federal SIF/DIPOA", emissao:"2024-01-01", validade:"2034-01-01", codigo:"924", orgao:"MAPA",                    status:"valido"},
+    {id:5, nome:"Registro de Serviço de Inspeção Federal SIF/DIPOA", emissao:"2024-01-01", validade:"2034-01-01", codigo:"924", orgao:"MAPA",                    status:""},
 
-    {id:6, nome:"Atestado de Conformidade de Projeto do Corpo de Bombeiros", emissao:"2024-07-01", validade:"2030-07-01", codigo:"2220110191440", orgao:"CB/PE", status:"valido"},
+    {id:6, nome:"Atestado de Conformidade de Projeto do Corpo de Bombeiros", emissao:"2024-07-01", validade:"2030-07-01", codigo:"2220110191440", orgao:"CB/PE", status:""},
 
-    {id:7, nome:"Atestado de Vistoria do Corpo de Bombeiros", emissao:"", validade:"", codigo:"",                          orgao:"CB/PE",                         status:"ausente"},
+    {id:7, nome:"Atestado de Vistoria do Corpo de Bombeiros", emissao:"", validade:"", codigo:"",                          orgao:"CB/PE",                         status:""},
 
-    {id:8, nome:"Licença de Instalação – Tanque de Equalização", emissao:"2026-03-09", validade:"2027-03-09", codigo:"01.26.03.001787-7", orgao:"CPRH",         status:"valido"},
+    {id:8, nome:"Licença de Instalação – Tanque de Equalização", emissao:"2026-03-09", validade:"2027-03-09", codigo:"01.26.03.001787-7", orgao:"CPRH",         status:""},
 
   ],
 
   pe: [
 
-    {id:1, nome:"Licença de Operação",            emissao:"2025-04-24", validade:"2026-04-24", codigo:"03.25.04.002417-6", orgao:"CPRH",                          status:"prox"},
+    {id:1, nome:"Licença de Operação",            emissao:"2025-04-24", validade:"2026-04-24", codigo:"03.25.04.002417-6", orgao:"CPRH",                          status:""},
 
-    {id:2, nome:"Cadastro Técnico Federal",        emissao:"2026-01-30", validade:"2026-04-30", codigo:"8476047",           orgao:"IBAMA",                         status:"valido"},
+    {id:2, nome:"Cadastro Técnico Federal",        emissao:"2026-01-30", validade:"2026-04-30", codigo:"8476047",           orgao:"IBAMA",                         status:""},
 
-    {id:3, nome:"Alvará de Funcionamento",         emissao:"2026-03-27", validade:"2026-04-24", codigo:"9449220",           orgao:"Prefeitura Municipal",          status:"valido"},
+    {id:3, nome:"Alvará de Funcionamento",         emissao:"2026-03-27", validade:"2026-04-24", codigo:"9449220",           orgao:"Prefeitura Municipal",          status:""},
 
-    {id:4, nome:"Registro de Serviço de Inspeção Federal SIF/DIPOA", emissao:"2021-10-11", validade:"2040-10-11", codigo:"3539", orgao:"MAPA",                   status:"valido"},
+    {id:4, nome:"Registro de Serviço de Inspeção Federal SIF/DIPOA", emissao:"2021-10-11", validade:"2040-10-11", codigo:"3539", orgao:"MAPA",                   status:""},
 
-    {id:5, nome:"Atestado de Conformidade de Projeto",emissao:"2025-04-14", validade:"2027-04-15", codigo:"2320290236169", orgao:"CB/PE",                        status:"valido"},
+    {id:5, nome:"Atestado de Conformidade de Projeto",emissao:"2025-04-14", validade:"2027-04-15", codigo:"2320290236169", orgao:"CB/PE",                        status:""},
 
-    {id:6, nome:"Atestado de Vistoria do Corpo de Bombeiros", emissao:"", validade:"", codigo:"",                          orgao:"CB/PE",                         status:"ausente"},
+    {id:6, nome:"Atestado de Vistoria do Corpo de Bombeiros", emissao:"", validade:"", codigo:"",                          orgao:"CB/PE",                         status:""},
 
   ],
 
   it: [
 
-    {id:1, nome:"Licença de Operação",            emissao:"2025-11-25", validade:"2026-11-25", codigo:"03.25.01.000408-5", orgao:"CPRH",                          status:"valido"},
+    {id:1, nome:"Licença de Operação",            emissao:"2025-11-25", validade:"2026-11-25", codigo:"03.25.01.000408-5", orgao:"CPRH",                          status:""},
 
-    {id:2, nome:"Cadastro Técnico Federal",        emissao:"2026-02-27", validade:"2026-05-27", codigo:"8406850",           orgao:"IBAMA",                         status:"valido"},
+    {id:2, nome:"Cadastro Técnico Federal",        emissao:"2026-02-27", validade:"2026-05-27", codigo:"8406850",           orgao:"IBAMA",                         status:""},
 
-    {id:3, nome:"Alvará de Funcionamento",         emissao:"2026-03-23", validade:"2026-06-23", codigo:"01010048/2025",     orgao:"Prefeitura Municipal",          status:"valido"},
+    {id:3, nome:"Alvará de Funcionamento",         emissao:"2026-03-23", validade:"2026-06-23", codigo:"01010048/2025",     orgao:"Prefeitura Municipal",          status:""},
 
-    {id:4, nome:"Outorga Hídrica",                 emissao:"2026-03-18", validade:"2035-03-18", codigo:"2024.1.000434",     orgao:"APAC",                          status:"valido"},
+    {id:4, nome:"Outorga Hídrica",                 emissao:"2026-03-18", validade:"2035-03-18", codigo:"2024.1.000434",     orgao:"APAC",                          status:""},
 
-    {id:5, nome:"Licença de Operação para o Poço", emissao:"2025-05-15", validade:"2030-05-14", codigo:"18.25.05 002981-3", orgao:"CPRH",                          status:"valido"},
+    {id:5, nome:"Licença de Operação para o Poço", emissao:"2025-05-15", validade:"2030-05-14", codigo:"18.25.05 002981-3", orgao:"CPRH",                          status:""},
 
-    {id:6, nome:"Outorga para Lançamento de Efluente", emissao:"2025-05-15", validade:"2027-05-15", codigo:"691,00",       orgao:"APAC",                          status:"valido"},
+    {id:6, nome:"Outorga para Lançamento de Efluente", emissao:"2025-05-15", validade:"2027-05-15", codigo:"691,00",       orgao:"APAC",                          status:""},
 
-    {id:7, nome:"Certificação de Registro de Estabelecimento", emissao:"2022-04-28", validade:"2032-04-28", codigo:"810", orgao:"MAPA",                           status:"valido"},
+    {id:7, nome:"Certificação de Registro de Estabelecimento", emissao:"2022-04-28", validade:"2032-04-28", codigo:"810", orgao:"MAPA",                           status:""},
 
-    {id:8, nome:"Atestado de Vistoria do Corpo de Bombeiros", emissao:"2025-01-02", validade:"2026-01-02", codigo:"23.10.83.022142-6", orgao:"CB/PE",            status:"vencido"},
+    {id:8, nome:"Atestado de Vistoria do Corpo de Bombeiros", emissao:"2025-01-02", validade:"2026-01-02", codigo:"23.10.83.022142-6", orgao:"CB/PE",            status:""},
 
   ],
 
   ga: [
 
-    {id:1, nome:"Licença de Operação",            emissao:"2025-04-28", validade:"2026-04-28", codigo:"05.25.04.002571-9", orgao:"CPRH",                          status:"prox"},
+    {id:1, nome:"Licença de Operação",            emissao:"2025-04-28", validade:"2026-04-28", codigo:"05.25.04.002571-9", orgao:"CPRH",                          status:""},
 
-    {id:2, nome:"Cadastro Técnico Federal",        emissao:"2026-01-30", validade:"2026-04-30", codigo:"5764040",           orgao:"IBAMA",                         status:"valido"},
+    {id:2, nome:"Cadastro Técnico Federal",        emissao:"2026-01-30", validade:"2026-04-30", codigo:"5764040",           orgao:"IBAMA",                         status:""},
 
-    {id:3, nome:"Alvará de Funcionamento",         emissao:"2026-02-13", validade:"2026-04-13", codigo:"WSKS99109",         orgao:"Prefeitura Municipal",          status:"valido"},
+    {id:3, nome:"Alvará de Funcionamento",         emissao:"2026-02-13", validade:"2026-04-13", codigo:"WSKS99109",         orgao:"Prefeitura Municipal",          status:""},
 
-    {id:4, nome:"Outorga Hídrica",                 emissao:"",           validade:"",           codigo:"",                  orgao:"APAC",                          status:"ausente"},
+    {id:4, nome:"Outorga Hídrica",                 emissao:"",           validade:"",           codigo:"",                  orgao:"APAC",                          status:""},
 
-    {id:5, nome:"Licença de Operação para o Poço", emissao:"",          validade:"",           codigo:"",                  orgao:"CPRH",                          status:"ausente"},
+    {id:5, nome:"Licença de Operação para o Poço", emissao:"",          validade:"",           codigo:"",                  orgao:"CPRH",                          status:""},
 
-    {id:6, nome:"Outorga para Lançamento de Efluente", emissao:"",      validade:"",           codigo:"",                  orgao:"APAC",                          status:"ausente"},
+    {id:6, nome:"Outorga para Lançamento de Efluente", emissao:"",      validade:"",           codigo:"",                  orgao:"APAC",                          status:""},
 
-    {id:7, nome:"Certificação de Registro de Estabelecimento", emissao:"2022-04-19", validade:"2026-05-05", codigo:"", orgao:"MAPA",                              status:"valido"},
+    {id:7, nome:"Certificação de Registro de Estabelecimento", emissao:"2022-04-19", validade:"2026-05-05", codigo:"", orgao:"MAPA",                              status:""},
 
-    {id:8, nome:"Atestado de Vistoria do Corpo de Bombeiros", emissao:"", validade:"", codigo:"",                         orgao:"CB/PE",                          status:"ausente"},
+    {id:8, nome:"Atestado de Vistoria do Corpo de Bombeiros", emissao:"", validade:"", codigo:"",                         orgao:"CB/PE",                          status:""},
 
   ]
 
@@ -4326,13 +4334,16 @@ function fmtDL(iso){
 
 function getStLic(l){
 
-  if(l.status) return l.status;
-
+  // "ausente" manual é respeitado apenas quando não há data de validade
   if(!l.validade) return "ausente";
 
+  // Sempre recalcula a partir da data para não congelar status desatualizado.
+  // Usa new Date(y, m-1, d) para evitar bug de fuso horário com strings ISO.
   const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-  const val  = new Date(l.validade); val.setHours(0,0,0,0);
+  const [y,m,d] = l.validade.split("-");
+
+  const val = new Date(+y, +m-1, +d);
 
   const dias = Math.round((val - hoje) / 86400000);
 
@@ -4350,7 +4361,9 @@ function diasRestLic(l){
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-  const val  = new Date(l.validade); val.setHours(0,0,0,0);
+  const [y,m,d] = l.validade.split("-");
+
+  const val = new Date(+y, +m-1, +d);
 
   return Math.round((val - hoje) / 86400000);
 
