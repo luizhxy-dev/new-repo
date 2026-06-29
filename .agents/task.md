@@ -1,0 +1,5 @@
+- [x] Criar script de extração e parsing de dados das planilhas baixadas
+- [x] Executar script de extração para gerar o arquivo `supabase_migration.sql`
+- [x] Adicionar botão e modal de configuração do Supabase no painel `residuos.html`
+- [x] Validar alterações nos arquivos HTML
+- [ ] Criar arquivo `walkthrough.md` resumindo o trabalho concluído

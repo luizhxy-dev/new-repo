@@ -26,6 +26,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 
 /* ===================== CSS VARIABLES — FOREST PROFESSIONAL ===================== */
@@ -2504,22 +2507,6 @@ body {
 
       <label>Órgão Emissor</label><input type="text" id="lOrgao" placeholder="Ex: CPRH">
 
-      <label>Status <span style="color:#a09990;font-weight:400;font-size:10px;">(opcional - sobrescreve cálculo automático)</span></label>
-
-      <select id="lStatus">
-
-        <option value="">Automático 🔄</option>
-
-        <option value="valido">Válido ✅</option>
-
-        <option value="prox">Próximo de vencer ⚠️</option>
-
-        <option value="vencido">Vencido 🚨</option>
-
-        <option value="ausente">Ausente 📁</option>
-
-      </select>
-
       <div style="margin-top:12px;padding:10px 12px;background:#f0f7f3;border-radius:9px;border:1px solid #a3d9b3;font-size:11px;color:#155724;font-family:'Inter',sans-serif;">
 
         💡 O status é calculado <strong>automaticamente</strong> pela data de validade:<br>
@@ -2574,29 +2561,27 @@ body {
 
 </div>
 
-<!-- ===================== MODAL SYNC CONFIG ===================== -->
+<!-- ===================== MODAL SYNC CONFIG (SUPABASE) ===================== -->
 
 <div class="movl" id="movl-sync">
 
   <div class="modal" style="max-width: 460px;">
 
-    <h3>⚙️ Configuração de Sincronização</h3>
+    <h3>⚙️ Configuração do Supabase</h3>
 
     <div class="mf">
 
-      <label>URL do Google Apps Script (Web App)</label>
+      <label>URL do Projeto Supabase</label>
 
-      <input type="text" id="sScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+      <input type="text" id="sSupabaseUrl" placeholder="https://xxxxxxxxxxxx.supabase.co">
 
-      <div style="margin-top: 12px; padding: 10px 12px; background: #fff3cd; border-radius: 9px; border: 1px solid #ffd97a; font-size: 11px; color: #856404; font-family:'Inter',sans-serif; text-align: left;">
+      <label style="margin-top: 12px; display:block;">Chave Anônima (anon key)</label>
 
-        ⚠️ Para ativar a gravação automática, você precisa publicar um script no seu Google Sheets e colar a URL gerada aqui.
+      <input type="text" id="sSupabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
 
-      </div>
+      <div style="margin-top: 12px; padding: 10px 12px; background: #e8f5e9; border-radius: 9px; border: 1px solid #a5d6a7; font-size: 11px; color: #2e7d32; font-family:'Inter',sans-serif; text-align: left;">
 
-      <div style="margin-top: 8px; font-size: 11px; color: var(--gray-600); line-height: 1.4; text-align: left;">
-
-        Para instruções passo a passo e o código do script, consulte o arquivo <strong>google_apps_script.js</strong> criado no seu projeto.
+        ℹ️ Encontre essas informações em: Supabase → Projeto → Settings → API.
 
       </div>
 
@@ -2606,7 +2591,7 @@ body {
 
       <button class="bcn" onclick="fecharModalSync()">Fechar</button>
 
-      <button class="bsv" onclick="salvarSync()">Salvar URL</button>
+      <button class="bsv" onclick="salvarSync()">Salvar</button>
 
     </div>
 
@@ -3218,90 +3203,91 @@ function updateUnitInfoDOM(un) {
 
 }
 
-function loadDataFromSpreadsheet() {
+// ── Supabase: helpers de configuração ──
+const SUPABASE_DEFAULT_URL = window.NATTO_CONFIG.supabaseUrl;
+const SUPABASE_DEFAULT_KEY = window.NATTO_CONFIG.supabaseKey;
+function getSupabaseConfig() {
+  return {
+    url: localStorage.getItem('supabase_url') || SUPABASE_DEFAULT_URL,
+    key: localStorage.getItem('supabase_key') || SUPABASE_DEFAULT_KEY
+  };
+}
 
-  const gasUrl = localStorage.getItem("apps_script_url");
+function getSupabaseClient() {
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) return null;
+  return supabase.createClient(url, key);
+}
+
+async function loadDataFromSupabase() {
+
+  const client = getSupabaseClient();
   const databar = document.getElementById("databar");
   const baseText = databar.textContent.split(" | ")[0];
 
+  if (!client) {
+    databar.textContent = baseText + " | 🟡 Dados locais (Supabase não configurado)";
+    return;
+  }
+
   databar.textContent = baseText + " | 🔄 Sincronizando...";
 
-  // Aplica dados vindos da planilha, re-renderiza tudo e atualiza cache local
-  function applySheetData(condRows, licRows) {
-    const unitMap = { 
-      "belo jardim": "bj", 
-      "pesqueira": "pe", 
-      "itapissuma": "it", 
-      "garanhuns": "ga" 
-    };
-    const cnpjs = {};
+  try {
+    const [{ data: condRows, error: e1 }, { data: licRows, error: e2 }] = await Promise.all([
+      client.from('condicionantes').select('*'),
+      client.from('licencas').select('*')
+    ]);
 
-    condRows.forEach((row, i) => {
-      if (i === 0 || row.length < 2) return;
-      const un = unitMap[row[0].trim().toLowerCase()];
-      if (un && !cnpjs[un]) cnpjs[un] = row[1].trim();
+    if (e1) throw e1;
+    if (e2) throw e2;
+
+    const newDados    = { bj: [], pe: [], it: [], ga: [] };
+    const newLicencas = { bj: [], pe: [], it: [], ga: [] };
+
+    (condRows || []).forEach(row => {
+      if (newDados[row.unidade]) {
+        newDados[row.unidade].push({
+          id:     row.id,
+          num:    row.num,
+          desc:   row.descricao,
+          prazos: row.prazos || []
+        });
+      }
     });
 
-    const newDados    = transformCondicionantes(condRows);
-    const newLicencas = transformLicencas(licRows);
+    (licRows || []).forEach(row => {
+      if (newLicencas[row.unidade]) {
+        newLicencas[row.unidade].push({
+          id:       row.id,
+          nome:     row.nome,
+          emissao:  row.emissao,
+          validade: row.validade,
+          codigo:   row.codigo,
+          orgao:    row.orgao
+        });
+      }
+    });
 
-    // Não sobrescreve dados locais se há uma edição recente ainda não confirmada pela planilha
     const _syncTs = parseInt(localStorage.getItem('natto_sync_ts') || '0');
     const _hasPending = _syncTs > 0 && (Date.now() - _syncTs) < 30000;
 
     ["bj","pe","it","ga"].forEach(un => {
-      // Só substitui se a planilha trouxe dados (evita apagar com array vazio)
       if (newDados[un]    && newDados[un].length    > 0 && !_hasPending) DADOS[un]    = newDados[un];
       if (newLicencas[un] && newLicencas[un].length > 0 && !_hasPending) LICENCAS[un] = newLicencas[un];
     });
 
-    ["bj","pe","it","ga"].forEach(un => {
-      if (cnpjs[un]) {
-        const el = document.getElementById("ui-"+un+"-cnpj");
-        if (el) el.textContent = cnpjs[un];
-      }
-      updateUnitInfoDOM(un);
-    });
+    ["bj","pe","it","ga"].forEach(un => updateUnitInfoDOM(un));
 
     const unId = (document.querySelector(".unidade.active") || {id:"u-bj"}).id.replace("u-","");
     renderDash(unId); renderGrid(unId); renderLic(unId); renderLicDash(unId);
     ["bj","pe","it","ga"].forEach(un => { if (un !== unId) { renderLic(un); renderLicDash(un); } });
 
     saveLocalData();
-    databar.textContent = baseText + " | 🟢 Conectado à Planilha Google";
-  }
+    databar.textContent = baseText + " | 🟢 Conectado ao Supabase";
 
-  // Fallback B: CSV público do Google Sheets
-  function loadFromCSV() {
-    const COND_URL = "https://docs.google.com/spreadsheets/d/1_Lh54dqjscfNBpRsW81qtN42xOkMPlSKshU7anh5aR4/export?format=csv&gid=0";
-    const LIC_URL  = "https://docs.google.com/spreadsheets/d/1_Lh54dqjscfNBpRsW81qtN42xOkMPlSKshU7anh5aR4/export?format=csv&gid=243782658";
-
-    Promise.all([
-      fetch(COND_URL).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }),
-      fetch(LIC_URL).then(r  => { if (!r.ok) throw new Error(r.status); return r.text(); })
-    ])
-    .then(([ct, lt]) => applySheetData(parseCSV(ct), parseCSV(lt)))
-    .catch(() => {
-      // Sem acesso ao CSV — mantém localStorage silenciosamente
-      databar.textContent = baseText + " | 🟡 Dados locais (planilha offline)";
-    });
-  }
-
-  // Rota principal: Apps Script doGet → retorna JSON com os dois sheets
-  // Requer reimplantação do script com a função doGet (ver google_apps_script.js)
-  if (gasUrl) {
-    fetch(gasUrl)
-      .then(res => res.json())
-      .then(result => {
-        if (!result.success) throw new Error(result.error || "Apps Script sem dados");
-        applySheetData(result.condicionantes, result.licencas);
-      })
-      .catch(() => {
-        // doGet falhou (CORS/deploy antigo) → tenta CSV
-        loadFromCSV();
-      });
-  } else {
-    loadFromCSV();
+  } catch (err) {
+    console.warn("Erro ao carregar do Supabase:", err);
+    databar.textContent = baseText + " | 🟡 Dados locais (Supabase offline)";
   }
 
 }
@@ -3844,7 +3830,7 @@ function _addP(un,id){ modalUnidade=un; addPrazoId=id; editId=null; editPrazoInd
 
 function fecharModal(){ document.getElementById("movl").classList.remove("open"); document.getElementById("fNum").disabled=false; document.getElementById("fDesc").disabled=false; document.getElementById("btnExcluirPrazo").style.display="none"; modalUnidade=null; editId=null; addPrazoId=null; editPrazoIndex=null; }
 
-function excluirPrazo(){ if(!confirm("Tem certeza de que deseja excluir este prazo?"))return; const un=modalUnidade; if(editId && editPrazoIndex!==null){ const c=DADOS[un].find(x=>x.id===editId); if(c.prazos.length===1){alert("A condicionante deve ter pelo menos um prazo.");return;} c.prazos.splice(editPrazoIndex,1); fecharModal(); renderGrid(un); renderDash(un); saveLocalData(); syncWithGoogleSheets("syncCondicionantes"); } }
+function excluirPrazo(){ if(!confirm("Tem certeza de que deseja excluir este prazo?"))return; const un=modalUnidade; if(editId && editPrazoIndex!==null){ const c=DADOS[un].find(x=>x.id===editId); if(c.prazos.length===1){alert("A condicionante deve ter pelo menos um prazo.");return;} c.prazos.splice(editPrazoIndex,1); fecharModal(); renderGrid(un); renderDash(un); saveLocalData(); syncWithSupabase("syncCondicionantes"); } }
 
 function salvar(){
 
@@ -3866,7 +3852,7 @@ function salvar(){
 
   localStorage.setItem('natto_sync_ts', Date.now());
 
-  syncWithGoogleSheets("syncCondicionantes");
+  syncWithSupabase("syncCondicionantes");
 
 }
 
@@ -3892,14 +3878,8 @@ function loadLocalData() {
     }
     if (l) {
       const parsed = JSON.parse(l);
-      // Limpa status que bloqueiam o recálculo automático por data
       ["bj","pe","it","ga"].forEach(un => {
-        if (parsed[un] && parsed[un].length > 0) {
-          parsed[un].forEach(lic => {
-            if (lic.validade && ["valido","prox","vencido"].includes(lic.status)) lic.status = "";
-          });
-          LICENCAS[un] = parsed[un];
-        }
+        if (parsed[un] && parsed[un].length > 0) LICENCAS[un] = parsed[un];
       });
     }
     return !!(d || l);
@@ -4457,8 +4437,6 @@ function abrirModalLic(un){
 
     document.getElementById("lOrgao").value="";
 
-    document.getElementById("lStatus").value="";
-
     document.getElementById("movl-lic").classList.add("open");
 
   });
@@ -4484,8 +4462,6 @@ function editLic(un,id){
     document.getElementById("lCodigo").value=l.codigo||"";
 
     document.getElementById("lOrgao").value=l.orgao||"";
-
-    document.getElementById("lStatus").value=l.status||"";
 
     document.getElementById("movl-lic").classList.add("open");
 
@@ -4513,8 +4489,6 @@ function salvarLic(){
 
   const orgao=document.getElementById("lOrgao").value.trim();
 
-  const status=document.getElementById("lStatus").value;
-
   if(!nome){alert("Informe o tipo de licença / autorização.");return;}
 
   const un=_licUnidade;
@@ -4523,13 +4497,13 @@ function salvarLic(){
 
     const l=LICENCAS[un].find(x=>x.id===_licEditId);
 
-    l.nome=nome; l.emissao=emissao; l.validade=validade; l.codigo=codigo; l.orgao=orgao; l.status=status;
+    l.nome=nome; l.emissao=emissao; l.validade=validade; l.codigo=codigo; l.orgao=orgao;
 
   } else {
 
     const nid=LICENCAS[un].length>0?Math.max(...LICENCAS[un].map(x=>x.id))+1:1;
 
-    LICENCAS[un].push({id:nid,nome,emissao,validade,codigo,orgao,status});
+    LICENCAS[un].push({id:nid,nome,emissao,validade,codigo,orgao});
 
   }
 
@@ -4543,7 +4517,7 @@ function salvarLic(){
 
   localStorage.setItem('natto_sync_ts', Date.now());
 
-  syncWithGoogleSheets("syncLicencas");
+  syncWithSupabase("syncLicencas");
 
 }
 
@@ -4595,17 +4569,19 @@ function salvarInfo(){
 
   fecharModalInfo();
 
-  syncWithGoogleSheets("syncCondicionantes");
+  syncWithSupabase("syncCondicionantes");
 
-  syncWithGoogleSheets("syncLicencas");
+  syncWithSupabase("syncLicencas");
 
 }
 
-// ===== SINCRONIZAÇÃO GOOGLE SHEETS =====
+// ===== SINCRONIZAÇÃO SUPABASE =====
 
 function abrirModalSync() {
 
-  document.getElementById("sScriptUrl").value = localStorage.getItem("apps_script_url") || "";
+  document.getElementById("sSupabaseUrl").value = localStorage.getItem("supabase_url") || SUPABASE_DEFAULT_URL;
+
+  document.getElementById("sSupabaseKey").value = localStorage.getItem("supabase_key") || SUPABASE_DEFAULT_KEY;
 
   document.getElementById("movl-sync").classList.add("open");
 
@@ -4619,86 +4595,103 @@ function fecharModalSync() {
 
 function salvarSync() {
 
-  const url = document.getElementById("sScriptUrl").value.trim();
+  const url = document.getElementById("sSupabaseUrl").value.trim();
 
-  localStorage.setItem("apps_script_url", url);
+  const key = document.getElementById("sSupabaseKey").value.trim();
+
+  localStorage.setItem("supabase_url", url);
+
+  localStorage.setItem("supabase_key", key);
 
   fecharModalSync();
 
-  if (url) {
+  if (url && key) {
 
-    alert("URL de Sincronização configurada com sucesso!");
+    alert("Supabase configurado com sucesso!");
 
-    loadDataFromSpreadsheet();
+    loadDataFromSupabase();
 
   } else {
 
-    alert("URL limpa. Sincronização de envio desativada.");
+    alert("Configuração limpa. Sincronização desativada.");
 
   }
 
 }
 
-function syncWithGoogleSheets(action) {
+async function syncWithSupabase(action) {
 
-  const url = localStorage.getItem("apps_script_url");
+  const client = getSupabaseClient();
 
-  if (!url) {
+  if (!client) {
 
-    console.log("Sincronização de envio desativada (URL do Apps Script não configurada).");
+    console.log("Supabase não configurado.");
 
     return;
 
   }
 
-  const cnpjs = {
-
-    bj: document.getElementById("ui-bj-cnpj") ? document.getElementById("ui-bj-cnpj").textContent : "",
-
-    pe: document.getElementById("ui-pe-cnpj") ? document.getElementById("ui-pe-cnpj").textContent : "",
-
-    it: document.getElementById("ui-it-cnpj") ? document.getElementById("ui-it-cnpj").textContent : "",
-
-    ga: document.getElementById("ui-ga-cnpj") ? document.getElementById("ui-ga-cnpj").textContent : ""
-
-  };
-
-  const payload = {
-
-    action: action,
-
-    cnpjs: cnpjs,
-
-    data: action === "syncCondicionantes" ? DADOS : LICENCAS
-
-  };
-
   const databar = document.getElementById("databar");
 
   const baseText = databar.textContent.split(" | ")[0];
 
-  databar.textContent = baseText + " | ⏳ Enviando alterações para a planilha...";
+  databar.textContent = baseText + " | ⏳ Enviando alterações para o Supabase...";
 
-  // Tenta primeiro sem no-cors para poder confirmar o sucesso e limpar o flag dirty
-  fetch(url, {
+  try {
 
-    method: "POST",
+    if (action === "syncCondicionantes") {
 
-    headers: {
+      const { error: delErr } = await client.from('condicionantes').delete().neq('id', 0);
 
-      "Content-Type": "text/plain"
+      if (delErr) throw delErr;
 
-    },
+      const rows = [];
 
-    body: JSON.stringify(payload)
+      ["bj","pe","it","ga"].forEach(un => {
 
-  })
+        (DADOS[un] || []).forEach(c => {
 
-  .then(res => res.json())
+          rows.push({ unidade: un, num: c.num, descricao: c.desc, prazos: c.prazos });
 
-  .then(result => {
+        });
 
-    if (!result.success) throw new Error(result.error || "Erro no servidor");
+      });
+
+      if (rows.length > 0) {
+
+        const { error: insErr } = await client.from('condicionantes').insert(rows);
+
+        if (insErr) throw insErr;
+
+      }
+
+    } else if (action === "syncLicencas") {
+
+      const { error: delErr } = await client.from('licencas').delete().neq('id', 0);
+
+      if (delErr) throw delErr;
+
+      const rows = [];
+
+      ["bj","pe","it","ga"].forEach(un => {
+
+        (LICENCAS[un] || []).forEach(l => {
+
+          rows.push({ unidade: un, nome: l.nome, emissao: l.emissao, validade: l.validade, codigo: l.codigo, orgao: l.orgao });
+
+        });
+
+      });
+
+      if (rows.length > 0) {
+
+        const { error: insErr } = await client.from('licencas').insert(rows);
+
+        if (insErr) throw insErr;
+
+      }
+
+    }
 
     localStorage.removeItem('natto_sync_ts');
 
@@ -4706,50 +4699,17 @@ function syncWithGoogleSheets(action) {
 
     setTimeout(() => {
 
-      databar.textContent = baseText + " | 🟢 Conectado à Planilha Google";
+      databar.textContent = baseText + " | 🟢 Conectado ao Supabase";
 
     }, 3000);
 
-  })
+  } catch (err) {
 
-  .catch(err => {
+    console.error("Erro ao sincronizar com Supabase:", err);
 
-    // Fallback: tenta com no-cors (não confirma sucesso, mas pode funcionar)
-    console.warn("Sync com CORS falhou, tentando no-cors:", err);
+    databar.textContent = baseText + " | 🔴 Erro ao salvar no Supabase";
 
-    fetch(url, {
-
-      method: "POST",
-
-      mode: "no-cors",
-
-      headers: { "Content-Type": "text/plain" },
-
-      body: JSON.stringify(payload)
-
-    })
-
-    .then(() => {
-
-      databar.textContent = baseText + " | 🟡 Enviado (aguardando confirmação)";
-
-      setTimeout(() => {
-
-        databar.textContent = baseText + " | 🟢 Conectado à Planilha Google";
-
-      }, 3000);
-
-    })
-
-    .catch(err2 => {
-
-      console.error("Erro ao enviar sincronização:", err2);
-
-      databar.textContent = baseText + " | 🔴 Erro ao salvar na planilha";
-
-    });
-
-  });
+  }
 
 }
 
@@ -4762,15 +4722,8 @@ loadLocalData();
 renderDash("bj");
 ["bj","pe","it","ga"].forEach(un=>{ renderLic(un); renderLicDash(un); });
 
-const oldDefaultUrl = "https://script.google.com/macros/s/AKfycbwZgkMs9TS50QHk5bIHDnh9OwyIi1WgqZKzigDxC15AI-qJtjhx_G7GI0160X7Tdc2Y/exec";
-const newDefaultUrl = "https://script.google.com/macros/s/AKfycbwl7couMf_cX9y_6d1VFeruGZ7qDkJ39xEzP21qU0jWQqVCZ110c-cjveOMSeh8knE/exec";
-const currentSavedUrl = localStorage.getItem("apps_script_url");
-if (!currentSavedUrl || currentSavedUrl === oldDefaultUrl || currentSavedUrl === "https://script.google.com/macros/s/AKfycbzknh4Jtg38n0Qc00whUATFQQIP-OePfRjWAeHiSLlXuEp832y1WbuJ3c78rSjolmpA/exec") {
-  localStorage.setItem("apps_script_url", newDefaultUrl);
-}
-
-// Tenta sincronizar com a planilha em background (atualiza cache se houver dados)
-loadDataFromSpreadsheet();
+// Tenta sincronizar com o Supabase em background (atualiza cache se houver dados)
+loadDataFromSupabase();
 
 document.getElementById("movl").addEventListener("click",function(e){if(e.target===this)fecharModal();});
 

@@ -16,6 +16,8 @@
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --red:        #C8102E;
@@ -451,6 +453,94 @@ select.f-input{cursor:pointer;}
 .cfg-stat-icon{font-size:1.6rem;}
 .cfg-stat-val{font-family:'Inter',sans-serif;font-size:1.5rem;font-weight:800;color:var(--ink);}
 .cfg-stat-lbl{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+
+/* ===================== MODAL SYNC SUPABASE ===================== */
+.movl {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15,22,18,0.45);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.movl.open { display: flex; }
+.modal {
+  background: #fff;
+  border-radius: 18px;
+  padding: 28px 30px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+  animation: fadeIn 0.25s ease both;
+}
+.modal h3 {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.mf label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 4px;
+  margin-top: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.mf input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+  background: #fafafa;
+}
+.mf input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(27,123,58,0.12);
+  background: #fff;
+}
+.mbtns {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+.btn-save, .btn-cancel {
+  flex: 1;
+  padding: 10px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  text-align: center;
+}
+.btn-save {
+  background: var(--green);
+  color: #fff;
+}
+.btn-save:hover {
+  background: var(--green-mid);
+}
+.btn-cancel {
+  background: #f0f0f0;
+  color: var(--ink);
+}
+.btn-cancel:hover {
+  background: #e8e8e8;
+}
 </style>
 </head>
 <body>
@@ -493,6 +583,11 @@ select.f-input{cursor:pointer;}
   <div class="topbar">
     <div class="topbar-title" id="topbar-title">Dashboard — Belo Jardim</div>
     <div class="topbar-right">
+      <span id="supabase-status" style="font-size: 0.72rem; color: var(--muted); font-weight: 700; display: flex; align-items: center; gap: 5px; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 8px;">
+        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #D97706;" id="supabase-status-dot"></span>
+        <span id="supabase-status-text">Local</span>
+      </span>
+      <button id="btn-sync-config" onclick="abrirModalSync()" style="background: none; border: 1px solid var(--border); border-radius: 50%; width: 32px; height: 32px; color: var(--ink); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: background .17s; padding: 0; margin-right: 8px;" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='none'" title="Configurar Sincronização do Supabase">⚙️</button>
       <span class="topbar-date" id="topbar-date"></span>
       <span class="topbar-badge">4 Unidades Ativas</span>
     </div>
@@ -760,8 +855,20 @@ const UCOL = {
   'Itapissuma':  {main:'#D97706',light:'#FEF3C7',dark:'#7C4109'},
 };
 
-// ── URL do Apps Script Web App (integração com Google Sheets) ──
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycby7ZzQn_HuOY_-JK9me9shsmjiY14nZzfxEs_egbg1wqTOHXn6O59WS2gR4yeAjv1Gr/exec';
+// ── Supabase: configuração ──
+const SUPABASE_DEFAULT_URL = window.NATTO_CONFIG.supabaseUrl;
+const SUPABASE_DEFAULT_KEY = window.NATTO_CONFIG.supabaseKey;
+function getSupabaseConfig() {
+  return {
+    url: localStorage.getItem('supabase_url') || SUPABASE_DEFAULT_URL,
+    key: localStorage.getItem('supabase_key') || SUPABASE_DEFAULT_KEY
+  };
+}
+function getSupabaseClient() {
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) return null;
+  return supabase.createClient(url, key);
+}
 
 let sessionEntries = [];
 let charts = {};
@@ -802,72 +909,107 @@ function reconstruirAgregados() {
   });
 }
 
-// ── Carrega dados da planilha Google Sheets via Apps Script ──
-function carregarDadosDaPlanilha() {
-  const alertEl = document.getElementById('form-alert');
-  fetch(SHEETS_URL + '?acao=dados')
-    .then(function(res) { return res.json(); })
-    .then(function(json) {
-      if (!json.ok || !json.registros || !json.registros.length) return;
-      // Reconstrói DB.daily agrupado por unidade (inicializado com as 4 unidades padrão)
-      const novo = {
-        'Belo Jardim': [],
-        'Pesqueira': [],
-        'Garanhuns': [],
-        'Itapissuma': []
-      };
-      const unitMap = {
-        'belo jardim': 'Belo Jardim',
-        'pesqueira': 'Pesqueira',
-        'garanhuns': 'Garanhuns',
-        'itapissuma': 'Itapissuma'
-      };
-      json.registros.forEach(function(r) {
-        if (!r.Unidade) return;
-        const normalizedUnitName = r.Unidade.trim().toLowerCase();
-        const u = unitMap[normalizedUnitName];
-        if (!u) return; // ignora se não for uma das 4 unidades padrão
-        
-        novo[u].push({
-          Data:       r.Data,
-          Tipo:       r.Tipo,
-          MTR:        r.MTR,
-          Classe_I:   +r.Classe_I,
-          Classe_II:  +r.Classe_II,
-          Aterro:     +r.Aterro,
-          Reciclagem: +r.Reciclagem
-        });
+// ── Carrega dados do Supabase ──
+async function carregarDoSupabase() {
+  const statusDot = document.getElementById('supabase-status-dot');
+  const statusText = document.getElementById('supabase-status-text');
+  
+  const client = getSupabaseClient();
+  if (!client) {
+    console.warn('Supabase não configurado — usando dados locais.');
+    if (statusDot) statusDot.style.background = '#D97706'; // amber
+    if (statusText) statusText.textContent = 'Local';
+    return;
+  }
+  
+  if (statusDot) statusDot.style.background = '#1D6FA4'; // blue
+  if (statusText) statusText.textContent = 'Sincronizando...';
+  
+  try {
+    const { data, error } = await client.from('residuos').select('*').order('data', { ascending: false });
+    if (error) throw error;
+    
+    if (statusDot) statusDot.style.background = '#1B7B3A'; // green
+    if (statusText) statusText.textContent = 'Supabase';
+    
+    if (!data || !data.length) return;
+
+    const novo = {
+      'Belo Jardim': [],
+      'Pesqueira':   [],
+      'Garanhuns':   [],
+      'Itapissuma':  []
+    };
+    const unitMap = {
+      'belo jardim': 'Belo Jardim',
+      'pesqueira':   'Pesqueira',
+      'garanhuns':   'Garanhuns',
+      'itapissuma':  'Itapissuma'
+    };
+    data.forEach(function(r) {
+      if (!r.unidade) return;
+      const u = unitMap[r.unidade.trim().toLowerCase()];
+      if (!u) return;
+      novo[u].push({
+        Data:       r.data,
+        Tipo:       r.tipo,
+        MTR:        r.mtr,
+        Classe_I:   +r.classe_i,
+        Classe_II:  +r.classe_ii,
+        Aterro:     +r.aterro,
+        Reciclagem: +r.reciclagem
       });
-      // Merge: só substitui unidades que a planilha trouxe dados (preserva hardcoded das demais)
-      Object.keys(novo).forEach(function(u) {
-        if (novo[u] && novo[u].length > 0) DB.daily[u] = novo[u];
-      });
-      reconstruirAgregados();
-      // Atualiza a visualização atual
-      if (currentPage === 'dashboard') renderDashboard(currentUnit);
-      else if (currentPage === 'consolidado') renderConsolidado();
-      else if (currentPage === 'historico') renderHistorico();
-    })
-    .catch(function(err) {
-      console.warn('Não foi possível carregar dados da planilha:', err);
     });
+    Object.keys(novo).forEach(function(u) {
+      if (novo[u] && novo[u].length > 0) DB.daily[u] = novo[u];
+    });
+    reconstruirAgregados();
+    if (currentPage === 'dashboard') renderDashboard(currentUnit);
+    else if (currentPage === 'consolidado') renderConsolidado();
+    else if (currentPage === 'historico') renderHistorico();
+  } catch (err) {
+    console.warn('Não foi possível carregar dados do Supabase:', err);
+    if (statusDot) statusDot.style.background = '#C8102E'; // red
+    if (statusText) statusText.textContent = 'Erro';
+  }
 }
 
-// ── Envia um novo registro para a planilha Google Sheets ──
-function salvarNaPlanilha(registro) {
-  return fetch(SHEETS_URL, {
-    method:  'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body:    JSON.stringify(registro)
-  })
-  .then(function(res) { return res.json(); })
-  .then(function(json) {
-    if (!json.ok) console.warn('Erro ao salvar na planilha:', json.erro);
-    return json;
-  })
-  .catch(function(err) {
-    console.warn('Falha ao enviar para planilha:', err);
-  });
+// ── Envia um novo registro para o Supabase e retorna o id gerado ──
+async function salvarNoSupabase(registro) {
+  const client = getSupabaseClient();
+  if (!client) {
+    console.warn('Supabase não configurado — registro não enviado.');
+    return { ok: false };
+  }
+  try {
+    const { data, error } = await client.from('residuos').insert({
+      unidade:    registro.Unidade,
+      data:       registro.Data,
+      tipo:       registro.Tipo,
+      mtr:        registro.MTR || null,
+      classe_i:   registro.Classe_I  || 0,
+      classe_ii:  registro.Classe_II || 0,
+      aterro:     registro.Aterro    || 0,
+      reciclagem: registro.Reciclagem|| 0
+    }).select('id').single();
+    if (error) throw error;
+    return { ok: true, id: data.id };
+  } catch (err) {
+    console.warn('Falha ao enviar para o Supabase:', err);
+    return { ok: false };
+  }
+}
+
+// ── Remove um registro do Supabase pelo id ──
+async function deletarDoSupabase(dbId) {
+  const client = getSupabaseClient();
+  if (!client || !dbId) return;
+  try {
+    const { error } = await client.from('residuos').delete().eq('id', dbId);
+    if (error) throw error;
+  } catch (err) {
+    console.warn('Falha ao excluir do Supabase:', err);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1319,14 +1461,17 @@ function addEntry() {
   sessionEntries.push(entrada);
   pendingMTRFiles = [];
 
-  // Salva na planilha Google Sheets em segundo plano
-  alertEl.innerHTML='<div class="alert alert-success">✓ Registro salvo localmente. Enviando para a planilha...</div>';
-  salvarNaPlanilha({Unidade:unidade,Data:data,Tipo:tipo,MTR:mtr,Classe_I:cl1,Classe_II:cl2,Aterro:aterro,Reciclagem:rec})
+  // Salva no Supabase em segundo plano
+  alertEl.innerHTML='<div class="alert alert-success">⏳ Enviando para o Supabase...</div>';
+  salvarNoSupabase({Unidade:unidade,Data:data,Tipo:tipo,MTR:mtr,Classe_I:cl1,Classe_II:cl2,Aterro:aterro,Reciclagem:rec})
     .then(function(res) {
       if (res && res.ok) {
-        alertEl.innerHTML='<div class="alert alert-success">✓ Registro salvo e gravado na planilha Google Sheets.</div>';
+        if (res.id) entrada._dbId = res.id; // vincula id do Supabase para permitir delete
+        reconstruirAgregados();
+        if (currentPage === 'consolidado') renderConsolidado();
+        alertEl.innerHTML='<div class="alert alert-success">✓ Registro gravado no Supabase.</div>';
       } else {
-        alertEl.innerHTML='<div class="alert alert-error">⚠ Salvo localmente, mas houve erro ao gravar na planilha.</div>';
+        alertEl.innerHTML='<div class="alert alert-error">⚠ Erro ao gravar no Supabase.</div>';
       }
       setTimeout(function(){alertEl.innerHTML='';},5000);
     });
@@ -1349,11 +1494,13 @@ function clearForm() {
 }
 
 function removeEntry(i) {
-  sessionEntries.splice(i,1);
+  const entry = sessionEntries[i];
+  sessionEntries.splice(i, 1);
   renderSessionTable();
   if(currentPage==='dashboard') renderDashboard(currentUnit);
   if(currentPage==='consolidado') renderConsolidado();
   if(currentPage==='historico') renderHistorico();
+  if (entry && entry._dbId) deletarDoSupabase(entry._dbId);
 }
 
 function renderSessionTable() {
@@ -1692,8 +1839,8 @@ buildSidebarUnits();
 populateTipoSelect();
 renderDashboard(currentUnit);
 
-// Carrega dados atualizados da planilha Google Sheets (em segundo plano)
-carregarDadosDaPlanilha();
+// Carrega dados atualizados do Supabase (em segundo plano)
+carregarDoSupabase();
 
 // Configurar Favicon dinamicamente com o logo da Natto
 const logoEl = document.querySelector('.brand-natto');
@@ -1704,6 +1851,44 @@ if (logoEl && logoEl.src) {
   link.href = logoEl.src;
   document.head.appendChild(link);
 }
+
+// ── Supabase Configuration Functions ──
+function abrirModalSync() {
+  document.getElementById('sSupabaseUrl').value = localStorage.getItem('supabase_url') || SUPABASE_DEFAULT_URL;
+  document.getElementById('sSupabaseKey').value = localStorage.getItem('supabase_key') || SUPABASE_DEFAULT_KEY;
+  document.getElementById('movl-sync').classList.add('open');
+}
+
+function fecharModalSync() {
+  document.getElementById('movl-sync').classList.remove('open');
+}
+
+function salvarSync() {
+  const url = document.getElementById('sSupabaseUrl').value.trim();
+  const key = document.getElementById('sSupabaseKey').value.trim();
+  
+  localStorage.setItem('supabase_url', url);
+  localStorage.setItem('supabase_key', key);
+  
+  fecharModalSync();
+  
+  if (url && key) {
+    alert('Supabase configurado com sucesso!');
+    carregarDoSupabase();
+  } else {
+    alert('Configuração limpa. Sincronização desativada.');
+    location.reload();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const modalSync = document.getElementById('movl-sync');
+  if (modalSync) {
+    modalSync.addEventListener('click', function(e) {
+      if (e.target === this) fecharModalSync();
+    });
+  }
+});
 </script>
 
 <!-- ══ PDF MODAL ══ -->
@@ -1720,5 +1905,26 @@ if (logoEl && logoEl.src) {
     <iframe id="pdf-frame" title="Visualizador de MTR"></iframe>
   </div>
 </div>
+
+<!-- ══ MODAL SYNC CONFIG (SUPABASE) ══ -->
+<div class="movl" id="movl-sync">
+  <div class="modal">
+    <h3>⚙️ Configuração do Supabase</h3>
+    <div class="mf">
+      <label>URL do Projeto Supabase</label>
+      <input type="text" id="sSupabaseUrl" placeholder="https://xxxxxxxxxxxx.supabase.co">
+      <label>Chave de API (Anon Key)</label>
+      <input type="text" id="sSupabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+      <div style="font-size: 11px; color: var(--muted); margin-top: 12px; line-height: 1.4;">
+        ℹ️ Encontre essas informações em: Supabase → Projeto → Settings → API.
+      </div>
+    </div>
+    <div class="mbtns">
+      <button class="btn-cancel" onclick="fecharModalSync()">Cancelar</button>
+      <button class="btn-save" onclick="salvarSync()">Salvar Configurações</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
