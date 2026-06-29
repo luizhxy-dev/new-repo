@@ -203,7 +203,7 @@ const emailIn = document.getElementById('email');
 const passIn  = document.getElementById('password');
 
 // Se já autenticado, vai direto pro hub
-if (sessionStorage.getItem('natto_auth')) {
+if (sessionStorage.getItem('natto_auth') || localStorage.getItem('natto_remember')) {
   location.href = 'hub.html';
 }
 
